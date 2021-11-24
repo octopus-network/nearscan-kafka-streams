@@ -1,0 +1,21 @@
+DROP TABLE access_keys;
+DROP TABLE account_changes;
+DROP TABLE accounts;
+DROP TABLE execution_outcome_receipts;
+DROP TABLE execution_outcomes;
+DROP TABLE action_receipts;
+DROP TABLE action_receipt_input_data;
+DROP TABLE action_receipt_output_data;
+DROP TABLE action_receipt_actions;
+DROP TABLE data_receipts;
+DROP TABLE receipts;
+DROP TABLE transaction_actions;
+DROP TABLE transactions;
+DROP TABLE chunks;
+DROP TABLE blocks;
+
+DROP TYPE access_key_permission_kind;
+DROP TYPE action_kind;
+DROP TYPE execution_outcome_status;
+DROP TYPE receipt_kind;
+DROP TYPE state_change_reason_kind;

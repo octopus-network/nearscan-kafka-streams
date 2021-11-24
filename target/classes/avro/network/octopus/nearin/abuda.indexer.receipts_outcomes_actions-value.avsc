@@ -1,0 +1,1 @@
+{"type":"record","name":"Value","namespace":"abuda.indexer.receipts_outcomes_actions","fields":[{"name":"receipt","type":["null","abuda.indexer.receipts.Value"]},{"name":"outcome","type":["null","abuda.indexer.execution_outcomes.Value"]},{"name":"action","type":["null","abuda.indexer.action_receipt_actions.Value"]}]}
