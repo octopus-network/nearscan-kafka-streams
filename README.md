@@ -194,28 +194,13 @@ cd /Users/deallinker-ry/Desktop/ni/nearin ; /usr/bin/env /Library/Java/JavaVirtu
 ./kafka-streams-application-reset \
   --bootstrap-servers pkc-l6ojq.asia-northeast1.gcp.confluent.cloud:9092 \
   --application-id octopus-balance \
-  --config-file /Users/ruanyu/Desktop/ni/nearin/src/main/resources/config/ccloud-dev.properties \
-  --input-topics test.indexer.receipts,test.indexer.execution_outcomes,test.indexer.action_receipt_actions,near.mainnet.oct.balance \
-  --to-earliest --force
-
-
-./kafka-streams-application-reset \
-  --bootstrap-servers pkc-l6ojq.asia-northeast1.gcp.confluent.cloud:9092 \
-  --application-id octopus-balance \
-  --config-file /Users/ruanyu/Desktop/ni/nearin/src/main/resources/config/ccloud-dev.properties \
-  --input-topics near.indexer.receipts,near.indexer.execution_outcomes,near.indexer.action_receipt_actions,near.mainnet.oct.balance \
-  --to-earliest --force
-
-./kafka-streams-application-reset \
-  --bootstrap-servers pkc-l6ojq.asia-northeast1.gcp.confluent.cloud:9092 \
-  --application-id octopus-balance \
   --config-file /Users/deallinker-ry/Desktop/ni/nearin/src/main/resources/config/ccloud-dev.properties \
-  --input-topics near.indexer.receipts,near.indexer.execution_outcomes,near.indexer.action_receipt_actions,near.mainnet.oct.balance \
+  --input-topics near.indexer.receipts,near.indexer.execution_outcomes,near.indexer.action_receipt_actions,near.oct.balance \
   --to-earliest --force
 
 
 ./kafka-avro-console-consumer \
-  --topic near.mainnet.oct.balance \
+  --topic near.oct.balance \
   --from-beginning \
   --bootstrap-server pkc-l6ojq.asia-northeast1.gcp.confluent.cloud:9092 \
   --consumer.config /Users/ruanyu/Desktop/ni/nearin/src/main/resources/config/ccloud-dev.properties  \
