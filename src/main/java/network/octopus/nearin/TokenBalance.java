@@ -63,15 +63,16 @@ public class TokenBalance {
 
     Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
 
-    // final boolean doReset = args.length > 1 && args[1].equals("--reset");
-    // if (doReset) {
+     final boolean doReset = args.length > 1 && args[1].equals("--reset");
+     if (doReset) {
       streams.cleanUp();
-    // }
+    }
 
     startKafkaStreams(streams);
   }
 
   static KafkaStreams buildKafkaStreams(final Properties props) {
+    final String tokenAddress = props.getProperty("rtoken.address");
     final String receiptTopic = props.getProperty("receipts.topic.name");
     final String executionOutcomesTopic = props.getProperty("execution_outcomes.topic.name");
     final String actionReceiptActionsTopic = props.getProperty("action_receipt_actions.topic.name");
@@ -83,8 +84,8 @@ public class TokenBalance {
     final StreamsBuilder builder = new StreamsBuilder();
 
     final StoreBuilder<WindowStore<String, Long>> dedupStoreBuilder = Stores.windowStoreBuilder(
-        Stores.inMemoryWindowStore(storeName, retentionPeriod, windowSize, false), Serdes.String(), Serdes.Long());
-        // Stores.persistentWindowStore(storeName, retentionPeriod, windowSize, false), Serdes.Long(), Serdes.Long());
+        // Stores.inMemoryWindowStore(storeName, retentionPeriod, windowSize, false), Serdes.String(), Serdes.Long());
+        Stores.persistentWindowStore(storeName, retentionPeriod, windowSize, false), Serdes.String(), Serdes.Long());
     builder.addStateStore(dedupStoreBuilder);
 
     final KStream<String, abuda.indexer.receipts.Value> receipts = builder
@@ -128,100 +129,102 @@ public class TokenBalance {
     //
     final Function<abuda.indexer.receipts_outcomes_actions.Value, abuda.indexer.token_transfer.Value.Builder> valueBuilder = (v) -> {
       return abuda.indexer.token_transfer.Value.newBuilder()
-        .setReceiptId(v.getReceipt().getReceiptId())
-        .setIncludedInBlockHash(v.getReceipt().getIncludedInBlockHash())
-        .setIncludedInChunkHash(v.getReceipt().getIncludedInChunkHash())
-        .setIndexInChunk(v.getReceipt().getIndexInChunk())
-        .setIncludedInBlockTimestamp(v.getReceipt().getIncludedInBlockTimestamp())
-        .setPredecessorAccountId(v.getReceipt().getPredecessorAccountId())
-        .setReceiverAccountId(v.getReceipt().getReceiverAccountId())
-        .setOriginatedFromTransactionHash(v.getReceipt().getOriginatedFromTransactionHash())
-        .setGasBurnt(v.getOutcome().getGasBurnt())
-        .setTokensBurnt(v.getOutcome().getTokensBurnt())
-        .setExecutorAccountId(v.getOutcome().getExecutorAccountId())
-        .setStatus(v.getOutcome().getStatus())
-        .setShardId(v.getOutcome().getShardId())
-        .setIndexInActionReceipt(v.getAction().getIndexInActionReceipt())
-        .setActionKind(v.getAction().getActionKind())
-        .setArgs(v.getAction().getArgs());
+          .setReceiptId(v.getReceipt().getReceiptId())
+          .setIncludedInBlockHash(v.getReceipt().getIncludedInBlockHash())
+          .setIncludedInChunkHash(v.getReceipt().getIncludedInChunkHash())
+          .setIndexInChunk(v.getReceipt().getIndexInChunk())
+          .setIncludedInBlockTimestamp(v.getReceipt().getIncludedInBlockTimestamp())
+          .setPredecessorAccountId(v.getReceipt().getPredecessorAccountId())
+          .setReceiverAccountId(v.getReceipt().getReceiverAccountId())
+          .setOriginatedFromTransactionHash(v.getReceipt().getOriginatedFromTransactionHash())
+          .setGasBurnt(v.getOutcome().getGasBurnt())
+          .setTokensBurnt(v.getOutcome().getTokensBurnt())
+          .setExecutorAccountId(v.getOutcome().getExecutorAccountId())
+          .setStatus(v.getOutcome().getStatus())
+          .setShardId(v.getOutcome().getShardId())
+          .setIndexInActionReceipt(v.getAction().getIndexInActionReceipt())
+          .setActionKind(v.getAction().getActionKind())
+          .setArgs(v.getAction().getArgs());
     };
 
     final KStream<String, abuda.indexer.token_transfer.Value> tokenTransfer = receiptOutcomeAction
-    .filter((key, value) -> !value.getOutcome().getStatus().equals("FAILURE") && value.getAction().getActionKind().equals("FUNCTION_CALL"))
-    .flatMapValues(value -> {
-      final JsonObject jsonObject = new Gson().fromJson(value.getAction().getArgs(), JsonObject.class);
-      final String methodName = jsonObject.get("method_name").getAsString();
-      final JsonObject argsJson = jsonObject.get("args_json").getAsJsonObject();
-      final List<abuda.indexer.token_transfer.Value> result = new ArrayList<>();
-      switch (methodName) {
-        case "mint": {
-          result.add(valueBuilder.apply(value)
-              .setAffectedAccount(argsJson.get("account_id").getAsString())
-              .setAffectedAmount(new BigDecimal(argsJson.get("amount").getAsString()))
-              .setAffectedReason("mint")
-              .setTransferFrom(value.getReceipt().getReceiverAccountId())
-              .setTransferTo(argsJson.get("account_id").getAsString())
-              .build());
-          break;
-        }
-        case "withdraw": {
-          result.add(valueBuilder.apply(value)
-              .setAffectedAccount(value.getReceipt().getPredecessorAccountId())
-              .setAffectedAmount((new BigDecimal(argsJson.get("amount").getAsString())).negate())
-              .setAffectedReason("withdraw")
-              .setTransferFrom(value.getReceipt().getPredecessorAccountId())
-              .setTransferTo(argsJson.get("recipient").getAsString())
-              .build());
-          break;
-        }
-        case "ft_transfer": {
-          result.add(valueBuilder.apply(value)
-              .setAffectedAccount(value.getReceipt().getPredecessorAccountId())
-              .setAffectedAmount((new BigDecimal(argsJson.get("amount").getAsString())).negate())
-              .setAffectedReason("ft_transfer_from")
-              .setTransferFrom(value.getReceipt().getPredecessorAccountId())
-              .setTransferTo(argsJson.get("receiver_id").getAsString())
-              .build());
-          result.add(valueBuilder.apply(value)
-              .setAffectedAccount(argsJson.get("receiver_id").getAsString())
-              .setAffectedAmount(new BigDecimal(argsJson.get("amount").getAsString()))
-              .setAffectedReason("ft_transfer_to")
-              .setTransferFrom(value.getReceipt().getPredecessorAccountId())
-              .setTransferTo(argsJson.get("receiver_id").getAsString())
-              .build());
-          break;
-        }
-        // {
-        //   "gas": 5000000000000,
-        //   "deposit": "0",
-        //   "args_json": {
-        //     "amount": "2500000000000000000000000",
-        //     "sender_id": "louisliu.near",
-        //     "receiver_id": "skyward.near"
-        //   },
-        //   "args_base64": "eyJzZW5kZXJfaWQiOiJsb3Vpc2xpdS5uZWFyIiwicmVjZWl2ZXJfaWQiOiJza3l3YXJkLm5lYXIiLCJhbW91bnQiOiIyNTAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0=",
-        //   "method_name": "ft_resolve_transfer"
-        // }
-        case "ft_transfer_call": {
-          result.add(valueBuilder.apply(value)
-              .setAffectedAccount(value.getReceipt().getPredecessorAccountId())
-              .setAffectedAmount((new BigDecimal(argsJson.get("amount").getAsString())).negate())
-              .setAffectedReason("ft_transfer_call_from")
-              .setTransferFrom(value.getReceipt().getPredecessorAccountId())
-              .setTransferTo(argsJson.get("receiver_id").getAsString())
-              .build());
-          result.add(valueBuilder.apply(value)
-              .setAffectedAccount(argsJson.get("receiver_id").getAsString())
-              .setAffectedAmount(new BigDecimal(argsJson.get("amount").getAsString()))
-              .setAffectedReason("ft_transfer_call_to")
-              .setTransferFrom(value.getReceipt().getPredecessorAccountId())
-              .setTransferTo(argsJson.get("receiver_id").getAsString())
-              .build());
-          break;
-        }
-      }
-      return result;
-    });
+        .filter((key, value) -> value.getReceipt().getReceiverAccountId().equals(tokenAddress)
+            && !value.getOutcome().getStatus().equals("FAILURE")
+            && value.getAction().getActionKind().equals("FUNCTION_CALL"))
+        .flatMapValues(value -> {
+          final JsonObject jsonObject = new Gson().fromJson(value.getAction().getArgs(), JsonObject.class);
+          final String methodName = jsonObject.get("method_name").getAsString();
+          final JsonObject argsJson = jsonObject.get("args_json").getAsJsonObject();
+          final List<abuda.indexer.token_transfer.Value> result = new ArrayList<>();
+          switch (methodName) {
+              case "mint": {
+                result.add(valueBuilder.apply(value)
+                    .setAffectedAccount(argsJson.get("account_id").getAsString())
+                    .setAffectedAmount(new BigDecimal(argsJson.get("amount").getAsString()))
+                    .setAffectedReason("mint")
+                    .setTransferFrom(value.getReceipt().getReceiverAccountId())
+                    .setTransferTo(argsJson.get("account_id").getAsString())
+                    .build());
+                break;
+              }
+              case "withdraw": {
+                result.add(valueBuilder.apply(value)
+                    .setAffectedAccount(value.getReceipt().getPredecessorAccountId())
+                    .setAffectedAmount((new BigDecimal(argsJson.get("amount").getAsString())).negate())
+                    .setAffectedReason("withdraw")
+                    .setTransferFrom(value.getReceipt().getPredecessorAccountId())
+                    .setTransferTo(argsJson.get("recipient").getAsString())
+                    .build());
+                break;
+              }
+              case "ft_transfer": {
+                result.add(valueBuilder.apply(value)
+                    .setAffectedAccount(value.getReceipt().getPredecessorAccountId())
+                    .setAffectedAmount((new BigDecimal(argsJson.get("amount").getAsString())).negate())
+                    .setAffectedReason("ft_transfer_from")
+                    .setTransferFrom(value.getReceipt().getPredecessorAccountId())
+                    .setTransferTo(argsJson.get("receiver_id").getAsString())
+                    .build());
+                result.add(valueBuilder.apply(value)
+                    .setAffectedAccount(argsJson.get("receiver_id").getAsString())
+                    .setAffectedAmount(new BigDecimal(argsJson.get("amount").getAsString()))
+                    .setAffectedReason("ft_transfer_to")
+                    .setTransferFrom(value.getReceipt().getPredecessorAccountId())
+                    .setTransferTo(argsJson.get("receiver_id").getAsString())
+                    .build());
+                break;
+              }
+              // {
+              // "gas": 5000000000000,
+              // "deposit": "0",
+              // "args_json": {
+              // "amount": "2500000000000000000000000",
+              // "sender_id": "louisliu.near",
+              // "receiver_id": "skyward.near"
+              // },
+              // "args_base64": "eyJzZW5kZXJfaWQiOiJsb3Vpc2xpdS5uZWFyIiwicmVjZWl2ZXJfaWQiOiJza3l3YXJkLm5lYXIiLCJhbW91bnQiOiIyNTAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0=",
+              // "method_name": "ft_resolve_transfer"
+              // }
+              case "ft_transfer_call": {
+                result.add(valueBuilder.apply(value)
+                    .setAffectedAccount(value.getReceipt().getPredecessorAccountId())
+                    .setAffectedAmount((new BigDecimal(argsJson.get("amount").getAsString())).negate())
+                    .setAffectedReason("ft_transfer_call_from")
+                    .setTransferFrom(value.getReceipt().getPredecessorAccountId())
+                    .setTransferTo(argsJson.get("receiver_id").getAsString())
+                    .build());
+                result.add(valueBuilder.apply(value)
+                    .setAffectedAccount(argsJson.get("receiver_id").getAsString())
+                    .setAffectedAmount(new BigDecimal(argsJson.get("amount").getAsString()))
+                    .setAffectedReason("ft_transfer_call_to")
+                    .setTransferFrom(value.getReceipt().getPredecessorAccountId())
+                    .setTransferTo(argsJson.get("receiver_id").getAsString())
+                    .build());
+                break;
+              }
+          }
+          return result;
+        });
     tokenTransfer.peek((k, v) -> logger.info("[2] transfer: {} --> {} [{}] {}", v.getTransferFrom(), v.getTransferTo(), v.getAffectedReason(), v.getAffectedAmount()));
 
     //
@@ -231,18 +234,21 @@ public class TokenBalance {
             (aggKey, newValue, aggValue) -> {
               final String account = newValue.getAffectedAccount();
               final BigDecimal amount = newValue.getAffectedAmount();
-              final long blockTimestamp = newValue.getIncludedInBlockTimestamp()
-                  .divide(new BigDecimal(1e6), RoundingMode.HALF_UP).longValue();
+              final long blockTimestamp = newValue.getIncludedInBlockTimestamp().divide(new BigDecimal(1e6), RoundingMode.HALF_UP).longValue();
               final String blockHash = newValue.getIncludedInBlockHash();
               final String transactionHash = newValue.getOriginatedFromTransactionHash();
               final String receiptId = newValue.getReceiptId();
 
               final BigDecimal balance = aggValue.getBalance() == null ? amount : aggValue.getBalance().add(amount);
               final abuda.indexer.token_balance.Value.Builder vb = abuda.indexer.token_balance.Value.newBuilder()
-                  .setAccount(account).setBalance(balance);
+                  .setAccount(account)
+                  .setBalance(balance);
               if (aggValue.getBlockTimestamp() < blockTimestamp) {
-                return vb.setBlockTimestamp(blockTimestamp).setBlockHash(blockHash).setTransactionHash(transactionHash)
-                    .setReceiptId(receiptId).build();
+                return vb.setBlockTimestamp(blockTimestamp)
+                    .setBlockHash(blockHash)
+                    .setTransactionHash(transactionHash)
+                    .setReceiptId(receiptId)
+                    .build();
               } else {
                 return vb.build();
               }
