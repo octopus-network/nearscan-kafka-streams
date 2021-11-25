@@ -32,14 +32,13 @@ M	migrations/2021-06-09-102523_grant_select_on_new_tables/up.sql
     "database.user": "username",
     "database.password": "password",
     "database.dbname": "db_mainnet",
-    "database.server.name": "test",
+    "database.server.name": "near",
     "database.sslmode": "disable",
     "table.include.list": "indexer.receipts, indexer.action_receipt_actions, indexer.execution_outcomes, indexer.heartbeat",
-    "slot.name": "cdc2",
+    "slot.name": "debezium_testnet",
     "heartbeat.interval.ms": "60000",
     "heartbeat.action.query": "INSERT INTO indexer.heartbeat (id, ts) VALUES (1, NOW()) ON CONFLICT(id) DO UPDATE SET ts=EXCLUDED.ts",
     "output.data.format": "AVRO",
-    "after.state.only": "false",
     "tasks.max": "1",
     "transforms": "ExtractReceiptID,ExtractExecutedReceiptID ",
     "predicates": "IsReceipt,IsExecutedReceipt ",
@@ -194,13 +193,21 @@ cd /Users/deallinker-ry/Desktop/ni/nearin ; /usr/bin/env /Library/Java/JavaVirtu
 ./kafka-streams-application-reset \
   --bootstrap-servers pkc-l6ojq.asia-northeast1.gcp.confluent.cloud:9092 \
   --application-id octopus-balance \
-  --config-file /Users/deallinker-ry/Desktop/ni/nearin/src/main/resources/config/ccloud-dev.properties \
-  --input-topics near.indexer.receipts,near.indexer.execution_outcomes,near.indexer.action_receipt_actions,near.oct.balance \
+  --config-file ~/.confluent/java.config \
+  --input-topics near.indexer.receipts,near.indexer.execution_outcomes,near.indexer.action_receipt_actions,nearin.oct_balance \
+  --to-earliest --force
+
+
+./kafka-streams-application-reset \
+  --bootstrap-servers pkc-l6ojq.asia-northeast1.gcp.confluent.cloud:9092 \
+  --application-id octopus-balance \
+  --config-file ~/.confluent/java.config \
+  --input-topics near.indexer.receipts,near.indexer.execution_outcomes,near.indexer.action_receipt_actions \
   --to-earliest --force
 
 
 ./kafka-avro-console-consumer \
-  --topic near.oct.balance \
+  --topic nearin.oct_balance \
   --from-beginning \
   --bootstrap-server pkc-l6ojq.asia-northeast1.gcp.confluent.cloud:9092 \
   --consumer.config /Users/ruanyu/Desktop/ni/nearin/src/main/resources/config/ccloud-dev.properties  \
@@ -264,3 +271,31 @@ lowercaseOutputLabelNames: false
 rules:
   - pattern: ".*"
 ```
+
+# sink
+{
+  "name": "PostgresSinkConnector_0",
+  "config": {
+    "topics": "nearin.oct_balance",
+    "input.data.format": "AVRO",
+    "connector.class": "PostgresSink",
+    "name": "PostgresSinkConnector_0",
+    "kafka.api.key": "G56ECZYIHRWHAVKP",
+    "kafka.api.secret": "rfKi+iCeVrS+98vLlznBCepp/TSnZ9RFte4b+usQ5iktU9eV0dsloZPMZB98+Ejq",
+    "connection.host": "34.85.112.76",
+    "connection.port": "5432",
+    "connection.user": "username",
+    "connection.password": "password",
+    "db.name": "db_mainnet",
+    "ssl.mode": "prefer",
+    "insert.mode": "UPSERT",
+    "db.timezone": "UTC",
+    "pk.mode": "record_value",
+    "pk.fields": "account",
+    "auto.create": "true",
+    "auto.evolve": "true",
+    "tasks.max": "1"
+  }
+}
+
+    "table.name.format": "kafka_${topic}",
