@@ -27,7 +27,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -56,6 +55,7 @@ public class TokenBalance {
     final Properties props = loadConfig(args[0]);
     props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
     props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, SpecificAvroSerde.class);
+    // props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
  
     Schemas.configureSerdes(props);
 
@@ -232,33 +232,52 @@ public class TokenBalance {
         .groupBy((key, value) -> value.getAffectedAccount())
         .aggregate(abuda.indexer.token_balance.Value::new,
             (aggKey, newValue, aggValue) -> {
-              final String account = newValue.getAffectedAccount();
-              final BigDecimal amount = newValue.getAffectedAmount();
-              final BigDecimal blockTimestamp = newValue.getIncludedInBlockTimestamp();
-              final String blockHash = newValue.getIncludedInBlockHash();
-              final String transactionHash = newValue.getOriginatedFromTransactionHash();
-              final String receiptId = newValue.getReceiptId();
+              final BigDecimal affectedAmount = newValue.getAffectedAmount();
+              final BigDecimal includedInBlockTimestamp = newValue.getIncludedInBlockTimestamp();
+              final int indexInChunk = newValue.getIndexInChunk();
 
-              final BigDecimal balance = aggValue.getBalance() == null ? amount : aggValue.getBalance().add(amount);
-              final abuda.indexer.token_balance.Value.Builder vb = abuda.indexer.token_balance.Value.newBuilder()
-                  .setAccount(account)
-                  .setBalance(balance);
-                
-              if (aggValue.getBlockTimestamp() == null) {
-                return vb.setBlockTimestamp(blockTimestamp)
-                    .setBlockHash(blockHash)
-                    .setTransactionHash(transactionHash)
-                    .setReceiptId(receiptId)
-                    .build();
-              } else if (aggValue.getBlockTimestamp().compareTo(blockTimestamp) < 0) {
-                return vb.setBlockTimestamp(blockTimestamp)
-                    .setBlockHash(blockHash)
-                    .setTransactionHash(transactionHash)
-                    .setReceiptId(receiptId)
-                    .build();
+              final BigDecimal aggBalance = aggValue.getBalance();
+              final BigDecimal aggBlockTimestamp = aggValue.getBlockTimestamp();
+              final int aggIndexInChunk = aggValue.getIndexInChunk();
+
+              if (aggBalance == null && aggBlockTimestamp == null) {
+                aggValue.setAccount(aggKey);
+                aggValue.setBalance(affectedAmount);
+                aggValue.setBlockTimestamp(includedInBlockTimestamp);
+                aggValue.setBlockHash(newValue.getIncludedInBlockHash());
+                aggValue.setChunkHash(newValue.getIncludedInChunkHash());
+                aggValue.setIndexInChunk(indexInChunk);
+                aggValue.setTransactionHash(newValue.getOriginatedFromTransactionHash());
+                aggValue.setReceiptId(newValue.getReceiptId());
               } else {
-                return vb.build();
+                Boolean update = true;
+                if (aggBlockTimestamp.compareTo(includedInBlockTimestamp) > 0) {
+                  update = false;
+                } else if (aggBlockTimestamp.compareTo(includedInBlockTimestamp) == 0 && aggIndexInChunk > indexInChunk) {
+                  update = false;
+                }
+                if (update) {
+                  aggValue.setBlockTimestamp(includedInBlockTimestamp);
+                  aggValue.setBlockHash(newValue.getIncludedInBlockHash());
+                  aggValue.setChunkHash(newValue.getIncludedInChunkHash());
+                  aggValue.setIndexInChunk(indexInChunk);
+                  aggValue.setTransactionHash(newValue.getOriginatedFromTransactionHash());
+                  aggValue.setReceiptId(newValue.getReceiptId());
+                }
+                aggValue.setBalance(aggBalance.add(affectedAmount));
               }
+              return aggValue;
+
+              // return abuda.indexer.token_balance.Value.newBuilder()
+              //     .setAccount(newValue.getAffectedAccount())
+              //     .setBalance(aggBalance == null ? affectedAmount : aggBalance.add(affectedAmount))
+              //     .setBlockTimestamp(update ? includedInBlockTimestamp : aggBlockTimestamp)
+              //     .setBlockHash(update ? newValue.getIncludedInBlockHash() : aggValue.getBlockHash())
+              //     .setChunkHash(update ? newValue.getIncludedInChunkHash() : aggValue.getChunkHash())
+              //     .setIndexInChunk(update ? indexInChunk : aggIndexInChunk)
+              //     .setTransactionHash(update ? newValue.getOriginatedFromTransactionHash() : aggValue.getTransactionHash())
+              //     .setReceiptId(update ? newValue.getReceiptId() : aggValue.getReceiptId())
+              //     .build();
             }, Materialized.with(TOKEN_BALANCE.keySerde(), TOKEN_BALANCE.valueSerde()));
 
     tokenBalance.toStream()
