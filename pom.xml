@@ -181,7 +181,7 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
+            <!-- <plugin>
                 <groupId>io.confluent</groupId>
                 <artifactId>kafka-schema-registry-maven-plugin</artifactId>
                 <version>${io.confluent.schema-registry.version}</version>
@@ -195,7 +195,7 @@
                         <param>^near.indexer.*-(key|value)$</param>
                     </subjectPatterns>
                 </configuration>
-            </plugin>
+            </plugin> -->
             <plugin>
                 <groupId>io.confluent</groupId>
                 <artifactId>kafka-schema-registry-maven-plugin</artifactId>
@@ -317,6 +317,7 @@
                         <!-- <image>gcr.io/project/my-app</image> -->
                     </to>
                     <container>
+                        <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
                         <jvmFlags>
                             <jvmFlag>-javaagent:/nearin/jmx_prometheus_javaagent-0.16.1.jar=7071:/nearin/streams-config.yml</jvmFlag>
                             <jvmFlag>-javaagent:/nearin/jolokia-jvm-1.7.1.jar=port=7072,host=*</jvmFlag>
