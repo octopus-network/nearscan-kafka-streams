@@ -74,11 +74,11 @@ public class Schemas {
 
     public final static Map<String, Topic<?, ?>> ALL = new HashMap<>();
     // input topic
-    public static Topic<String, abuda.indexer.receipts.Value> RECEIPTS;
-    public static Topic<String, abuda.indexer.execution_outcomes.Value> EXECUTION_OUTCOMES;
-    public static Topic<String, abuda.indexer.action_receipt_actions.Value> ACTION_RECEIPT_ACTIONS;
+    public static Topic<String, near.indexer.receipts.Value> RECEIPTS;
+    public static Topic<String, near.indexer.execution_outcomes.Value> EXECUTION_OUTCOMES;
+    public static Topic<String, near.indexer.action_receipt_actions.Value> ACTION_RECEIPT_ACTIONS;
     // output topic
-    public static Topic<String, abuda.indexer.token_balance.Value> TOKEN_BALANCE;
+    public static Topic<String, near.indexer.token_balance.Value> TOKEN_BALANCE;
 
     static {
       createTopics();

@@ -164,17 +164,17 @@
                             <enableDecimalLogicalType>true</enableDecimalLogicalType>
                             <sourceDirectory>${project.basedir}/src/main/resources/avro/network/octopus/nearin/</sourceDirectory>
                             <imports>
-                                <import>${project.basedir}/src/main/resources/avro/network/octopus/nearin/abuda.indexer.receipts-value.avsc</import>
-                                <import>${project.basedir}/src/main/resources/avro/network/octopus/nearin/abuda.indexer.execution_outcomes-value.avsc</import>
-                                <import>${project.basedir}/src/main/resources/avro/network/octopus/nearin/abuda.indexer.action_receipt_actions-value.avsc</import>
+                                <import>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.receipts-value.avsc</import>
+                                <import>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.execution_outcomes-value.avsc</import>
+                                <import>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.action_receipt_actions-value.avsc</import>
                             </imports>
                             <includes>
-                                <include>abuda.indexer.receipts-value.avsc</include>
-                                <include>abuda.indexer.execution_outcomes-value.avsc</include>
-                                <include>abuda.indexer.action_receipt_actions-value.avsc</include>
-                                <include>abuda.indexer.receipts_outcomes_actions-value.avsc</include>
-                                <include>abuda.indexer.token_transfer-value.avsc</include>
-                                <include>abuda.indexer.token_balance-value.avsc</include>
+                                <include>near.indexer.receipts-value.avsc</include>
+                                <include>near.indexer.execution_outcomes-value.avsc</include>
+                                <include>near.indexer.action_receipt_actions-value.avsc</include>
+                                <include>near.indexer.receipts_outcomes_actions-value.avsc</include>
+                                <include>near.indexer.token_transfer-value.avsc</include>
+                                <include>near.indexer.token_balance-value.avsc</include>
                             </includes>
                             <outputDirectory>${project.build.directory}/generated-sources</outputDirectory>
                         </configuration>
@@ -192,7 +192,7 @@
                     <userInfoConfig>${schemaRegistryBasicAuthUserInfo}</userInfoConfig>
                     <outputDirectory>${project.basedir}/src/main/resources/avro/network/octopus/nearin/</outputDirectory>
                     <subjectPatterns>
-                        <param>^abuda.indexer.*-(key|value)$</param>
+                        <param>^near.indexer.*-(key|value)$</param>
                     </subjectPatterns>
                 </configuration>
             </plugin>

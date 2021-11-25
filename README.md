@@ -203,14 +203,14 @@ cd /Users/deallinker-ry/Desktop/ni/nearin ; /usr/bin/env /Library/Java/JavaVirtu
   --bootstrap-servers pkc-l6ojq.asia-northeast1.gcp.confluent.cloud:9092 \
   --application-id octopus-balance \
   --config-file /Users/ruanyu/Desktop/ni/nearin/src/main/resources/config/ccloud-dev.properties \
-  --input-topics abuda.indexer.receipts,abuda.indexer.execution_outcomes,abuda.indexer.action_receipt_actions,near.mainnet.oct.balance \
+  --input-topics near.indexer.receipts,near.indexer.execution_outcomes,near.indexer.action_receipt_actions,near.mainnet.oct.balance \
   --to-earliest --force
 
 ./kafka-streams-application-reset \
   --bootstrap-servers pkc-l6ojq.asia-northeast1.gcp.confluent.cloud:9092 \
   --application-id octopus-balance \
   --config-file /Users/deallinker-ry/Desktop/ni/nearin/src/main/resources/config/ccloud-dev.properties \
-  --input-topics abuda.indexer.receipts,abuda.indexer.execution_outcomes,abuda.indexer.action_receipt_actions,near.mainnet.oct.balance \
+  --input-topics near.indexer.receipts,near.indexer.execution_outcomes,near.indexer.action_receipt_actions,near.mainnet.oct.balance \
   --to-earliest --force
 
 

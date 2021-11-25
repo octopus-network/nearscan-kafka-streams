@@ -88,7 +88,7 @@ public class TokenBalance {
         Stores.persistentWindowStore(storeName, retentionPeriod, windowSize, false), Serdes.String(), Serdes.Long());
     builder.addStateStore(dedupStoreBuilder);
 
-    final KStream<String, abuda.indexer.receipts.Value> receipts = builder
+    final KStream<String, near.indexer.receipts.Value> receipts = builder
         .stream(receiptTopic,
             Consumed.with(RECEIPTS.keySerde(), RECEIPTS.valueSerde()))
                 // .withTimestampExtractor(RECEIPTS.timestampExtractor())) // extrect timestamp in nanoseconds
@@ -97,7 +97,7 @@ public class TokenBalance {
     // receipts..peek((k, v) -> logger.info("receipts: {} {}", k, v));
     // receipts.print(Printed.toSysOut());
 
-    final KStream<String, abuda.indexer.execution_outcomes.Value> outcomes = builder
+    final KStream<String, near.indexer.execution_outcomes.Value> outcomes = builder
         .stream(executionOutcomesTopic,
             Consumed.with(EXECUTION_OUTCOMES.keySerde(), EXECUTION_OUTCOMES.valueSerde()))
                 // .withTimestampExtractor(EXECUTION_OUTCOMES.timestampExtractor())) // extrect timestamp in nanoseconds
@@ -106,7 +106,7 @@ public class TokenBalance {
     // outcomes.print(Printed.toSysOut());
     // outcomes.peek((k, v) -> logger.info("outcomes: {} {}", k, v));
 
-    final KStream<String, abuda.indexer.action_receipt_actions.Value> actions = builder
+    final KStream<String, near.indexer.action_receipt_actions.Value> actions = builder
         .stream(actionReceiptActionsTopic,
             Consumed.with(ACTION_RECEIPT_ACTIONS.keySerde(), ACTION_RECEIPT_ACTIONS.valueSerde()))
                 // .withTimestampExtractor(ACTION_RECEIPT_ACTIONS.timestampExtractor())) // extrect timestamp in nanoseconds
@@ -115,11 +115,11 @@ public class TokenBalance {
     // actions.print(Printed.toSysOut());
     // actions.peek((k, v) -> logger.info("actions: {} {}", k, v));
 
-    final KStream<String, abuda.indexer.receipts_outcomes_actions.Value> receiptOutcomeAction = receipts
-        .join(outcomes, (receipt, outcome) -> new abuda.indexer.receipts_outcomes_actions.Value(receipt, outcome, null),
+    final KStream<String, near.indexer.receipts_outcomes_actions.Value> receiptOutcomeAction = receipts
+        .join(outcomes, (receipt, outcome) -> new near.indexer.receipts_outcomes_actions.Value(receipt, outcome, null),
             JoinWindows.of(Duration.ofMillis(2000)))
         .join(actions,
-            (receiptOutcome, action) -> new abuda.indexer.receipts_outcomes_actions.Value(receiptOutcome.getReceipt(),
+            (receiptOutcome, action) -> new near.indexer.receipts_outcomes_actions.Value(receiptOutcome.getReceipt(),
                 receiptOutcome.getOutcome(), action),
             JoinWindows.of(Duration.ofMillis(2000)));
     receiptOutcomeAction.peek((k, v) -> logger.info("[1] joint {} --> {} {}", k, v.getOutcome().getStatus(), v.getAction().getActionKind()));
@@ -127,8 +127,8 @@ public class TokenBalance {
       // .peek((k, v) -> logger.info("[2] filter {} --> {}", k, v));
 
     //
-    final Function<abuda.indexer.receipts_outcomes_actions.Value, abuda.indexer.token_transfer.Value.Builder> valueBuilder = (v) -> {
-      return abuda.indexer.token_transfer.Value.newBuilder()
+    final Function<near.indexer.receipts_outcomes_actions.Value, near.indexer.token_transfer.Value.Builder> valueBuilder = (v) -> {
+      return near.indexer.token_transfer.Value.newBuilder()
           .setReceiptId(v.getReceipt().getReceiptId())
           .setIncludedInBlockHash(v.getReceipt().getIncludedInBlockHash())
           .setIncludedInChunkHash(v.getReceipt().getIncludedInChunkHash())
@@ -147,7 +147,7 @@ public class TokenBalance {
           .setArgs(v.getAction().getArgs());
     };
 
-    final KStream<String, abuda.indexer.token_transfer.Value> tokenTransfer = receiptOutcomeAction
+    final KStream<String, near.indexer.token_transfer.Value> tokenTransfer = receiptOutcomeAction
         .filter((key, value) -> value.getReceipt().getReceiverAccountId().equals(tokenAddress)
             && !value.getOutcome().getStatus().equals("FAILURE")
             && value.getAction().getActionKind().equals("FUNCTION_CALL"))
@@ -155,7 +155,7 @@ public class TokenBalance {
           final JsonObject jsonObject = new Gson().fromJson(value.getAction().getArgs(), JsonObject.class);
           final String methodName = jsonObject.get("method_name").getAsString();
           final JsonObject argsJson = jsonObject.get("args_json").getAsJsonObject();
-          final List<abuda.indexer.token_transfer.Value> result = new ArrayList<>();
+          final List<near.indexer.token_transfer.Value> result = new ArrayList<>();
           switch (methodName) {
               case "mint": {
                 result.add(valueBuilder.apply(value)
@@ -228,9 +228,9 @@ public class TokenBalance {
     tokenTransfer.peek((k, v) -> logger.info("[2] transfer: {} --> {} [{}] {}", v.getTransferFrom(), v.getTransferTo(), v.getAffectedReason(), v.getAffectedAmount()));
 
     //
-    final KTable<String, abuda.indexer.token_balance.Value> tokenBalance = tokenTransfer
+    final KTable<String, near.indexer.token_balance.Value> tokenBalance = tokenTransfer
         .groupBy((key, value) -> value.getAffectedAccount())
-        .aggregate(abuda.indexer.token_balance.Value::new,
+        .aggregate(near.indexer.token_balance.Value::new,
             (aggKey, newValue, aggValue) -> {
               final BigDecimal affectedAmount = newValue.getAffectedAmount();
               final BigDecimal includedInBlockTimestamp = newValue.getIncludedInBlockTimestamp();
@@ -268,7 +268,7 @@ public class TokenBalance {
               }
               return aggValue;
 
-              // return abuda.indexer.token_balance.Value.newBuilder()
+              // return near.indexer.token_balance.Value.newBuilder()
               //     .setAccount(newValue.getAffectedAccount())
               //     .setBalance(aggBalance == null ? affectedAmount : aggBalance.add(affectedAmount))
               //     .setBlockTimestamp(update ? includedInBlockTimestamp : aggBlockTimestamp)
