@@ -100,7 +100,7 @@ public class Schemas {
 
       TOKEN_BALANCE = new Topic<>("near.indexer.token_balance", 
           Serdes.String(), new SpecificAvroSerde<>(), (v) -> {
-            return new BigDecimal(v.getBlockTimestamp()).multiply(new BigDecimal(1e6));
+            return v.getBlockTimestamp();
           });
     }
   }

@@ -72,14 +72,14 @@ public class TokenBalance {
   }
 
   static KafkaStreams buildKafkaStreams(final Properties props) {
-    final String tokenAddress = props.getProperty("rtoken.address");
+    final String tokenAddress = props.getProperty("token.address");
     final String receiptTopic = props.getProperty("receipts.topic.name");
     final String executionOutcomesTopic = props.getProperty("execution_outcomes.topic.name");
     final String actionReceiptActionsTopic = props.getProperty("action_receipt_actions.topic.name");
     final String tokenBalanceTopic = props.getProperty("token_balance.topic.name");
     
-    final Duration windowSize = Duration.ofMinutes(10);
-    final Duration retentionPeriod = Duration.ofDays(30);
+    final Duration windowSize = Duration.ofMinutes(60);
+    final Duration retentionPeriod = Duration.ofDays(3);
 
     final StreamsBuilder builder = new StreamsBuilder();
 
@@ -234,7 +234,7 @@ public class TokenBalance {
             (aggKey, newValue, aggValue) -> {
               final String account = newValue.getAffectedAccount();
               final BigDecimal amount = newValue.getAffectedAmount();
-              final long blockTimestamp = newValue.getIncludedInBlockTimestamp().divide(new BigDecimal(1e6), RoundingMode.HALF_UP).longValue();
+              final BigDecimal blockTimestamp = newValue.getIncludedInBlockTimestamp();
               final String blockHash = newValue.getIncludedInBlockHash();
               final String transactionHash = newValue.getOriginatedFromTransactionHash();
               final String receiptId = newValue.getReceiptId();
@@ -243,7 +243,14 @@ public class TokenBalance {
               final abuda.indexer.token_balance.Value.Builder vb = abuda.indexer.token_balance.Value.newBuilder()
                   .setAccount(account)
                   .setBalance(balance);
-              if (aggValue.getBlockTimestamp() < blockTimestamp) {
+                
+              if (aggValue.getBlockTimestamp() == null) {
+                return vb.setBlockTimestamp(blockTimestamp)
+                    .setBlockHash(blockHash)
+                    .setTransactionHash(transactionHash)
+                    .setReceiptId(receiptId)
+                    .build();
+              } else if (aggValue.getBlockTimestamp().compareTo(blockTimestamp) < 0) {
                 return vb.setBlockTimestamp(blockTimestamp)
                     .setBlockHash(blockHash)
                     .setTransactionHash(transactionHash)
