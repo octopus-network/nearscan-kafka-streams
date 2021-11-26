@@ -157,6 +157,33 @@ public class TokenBalance {
           final JsonObject argsJson = jsonObject.get("args_json").getAsJsonObject();
           final List<near.indexer.token_transfer.Value> result = new ArrayList<>();
           switch (methodName) {
+              // {
+              //   "gas": 100000000000000,
+              //   "deposit": "0",
+              //   "args_json": {
+              //     "metadata": {
+              //       "icon": "https://oct.network/assets/img/octfavicon.ico",
+              //       "name": "OCTToken",
+              //       "spec": "ft-1.0.0",
+              //       "symbol": "OCT",
+              //       "decimals": 24
+              //     },
+              //     "owner_id": "madtest.testnet",
+              //     "total_supply": "100000000000000000000000000000000"
+              //   },
+              //   "args_base64": "eyJvd25lcl9pZCI6Im1hZHRlc3QudGVzdG5ldCIsInRvdGFsX3N1cHBseSI6IjEwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMCIsIm1ldGFkYXRhIjp7InNwZWMiOiJmdC0xLjAuMCIsIm5hbWUiOiJPQ1RUb2tlbiIsInN5bWJvbCI6Ik9DVCIsImljb24iOiJodHRwczovL29jdC5uZXR3b3JrL2Fzc2V0cy9pbWcvb2N0ZmF2aWNvbi5pY28iLCJkZWNpbWFscyI6MjR9fQ==",
+              //   "method_name": "new"
+              // }
+              case "new": {
+                result.add(valueBuilder.apply(value)
+                    .setAffectedAccount(argsJson.get("owner_id").getAsString())
+                    .setAffectedAmount(new BigDecimal(argsJson.get("total_supply").getAsString()))
+                    .setAffectedReason("new")
+                    .setTransferFrom(value.getReceipt().getPredecessorAccountId()) // caller
+                    .setTransferTo(argsJson.get("owner_id").getAsString())
+                    .build());
+                break;
+              }
               case "mint": {
                 result.add(valueBuilder.apply(value)
                     .setAffectedAccount(argsJson.get("account_id").getAsString())
