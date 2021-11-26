@@ -194,6 +194,24 @@ public class TokenBalance {
                     .build());
                 break;
               }
+              // case "ft_transfer_call": {
+              //   result.add(valueBuilder.apply(value)
+              //       .setAffectedAccount(value.getReceipt().getPredecessorAccountId())
+              //       .setAffectedAmount((new BigDecimal(argsJson.get("amount").getAsString())).negate())
+              //       .setAffectedReason("ft_transfer_call_from")
+              //       .setTransferFrom(value.getReceipt().getPredecessorAccountId())
+              //       .setTransferTo(argsJson.get("receiver_id").getAsString())
+              //       .build());
+              //   result.add(valueBuilder.apply(value)
+              //       .setAffectedAccount(argsJson.get("receiver_id").getAsString())
+              //       .setAffectedAmount(new BigDecimal(argsJson.get("amount").getAsString()))
+              //       .setAffectedReason("ft_transfer_call_to")
+              //       .setTransferFrom(value.getReceipt().getPredecessorAccountId())
+              //       .setTransferTo(argsJson.get("receiver_id").getAsString())
+              //       .build());
+              //   break;
+              // }
+
               // {
               // "gas": 5000000000000,
               // "deposit": "0",
@@ -205,19 +223,19 @@ public class TokenBalance {
               // "args_base64": "eyJzZW5kZXJfaWQiOiJsb3Vpc2xpdS5uZWFyIiwicmVjZWl2ZXJfaWQiOiJza3l3YXJkLm5lYXIiLCJhbW91bnQiOiIyNTAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0=",
               // "method_name": "ft_resolve_transfer"
               // }
-              case "ft_transfer_call": {
+              case "ft_resolve_transfer": {
                 result.add(valueBuilder.apply(value)
-                    .setAffectedAccount(value.getReceipt().getPredecessorAccountId())
+                    .setAffectedAccount(argsJson.get("sender_id").getAsString())
                     .setAffectedAmount((new BigDecimal(argsJson.get("amount").getAsString())).negate())
-                    .setAffectedReason("ft_transfer_call_from")
-                    .setTransferFrom(value.getReceipt().getPredecessorAccountId())
+                    .setAffectedReason("ft_resolve_transfer_from")
+                    .setTransferFrom(argsJson.get("sender_id").getAsString())
                     .setTransferTo(argsJson.get("receiver_id").getAsString())
                     .build());
                 result.add(valueBuilder.apply(value)
                     .setAffectedAccount(argsJson.get("receiver_id").getAsString())
                     .setAffectedAmount(new BigDecimal(argsJson.get("amount").getAsString()))
-                    .setAffectedReason("ft_transfer_call_to")
-                    .setTransferFrom(value.getReceipt().getPredecessorAccountId())
+                    .setAffectedReason("ft_resolve_transfer_to")
+                    .setTransferFrom(argsJson.get("sender_id").getAsString())
                     .setTransferTo(argsJson.get("receiver_id").getAsString())
                     .build());
                 break;
