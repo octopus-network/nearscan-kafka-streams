@@ -297,5 +297,3 @@ rules:
     "tasks.max": "1"
   }
 }
-
-    "table.name.format": "kafka_${topic}",
