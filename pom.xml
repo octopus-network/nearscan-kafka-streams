@@ -19,8 +19,8 @@
         <slf4j-api.version>1.7.6</slf4j-api.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <gson.version>2.8.9</gson.version>
-        <schemaRegistryUrl>https://psrc-2225o.us-central1.gcp.confluent.cloud</schemaRegistryUrl>
-        <schemaRegistryBasicAuthUserInfo>5SZNXHCC6FN4KUKJ:biJ3po6ZHx9Ug5pZ0/iyL2woXzAmljrYYK0BBGL0J+rpsHwLErEXBeI7IXrJNwU1</schemaRegistryBasicAuthUserInfo>
+        <schemaRegistryUrl>https://psrc-q8qx7.us-central1.gcp.confluent.cloud</schemaRegistryUrl>
+        <schemaRegistryBasicAuthUserInfo>SCDQODHJLBDNTX7K:TcRNKrqBTbGY6l86eDQXi8cxTfyqvbUucWH3rWPRFImjq30hxGg8x0dK1H6vt8F3</schemaRegistryBasicAuthUserInfo>
         <io.confluent.schema-registry.version>${confluent.version.range}</io.confluent.schema-registry.version>
     </properties>
 
