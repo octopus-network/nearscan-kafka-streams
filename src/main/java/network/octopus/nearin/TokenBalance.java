@@ -94,8 +94,7 @@ public class TokenBalance {
                 // .withTimestampExtractor(RECEIPTS.timestampExtractor())) // extrect timestamp in nanoseconds
         .transform(() -> new DeduplicationTransformer<>(windowSize.toMillis(),
             (key, value) -> "receipts-"+value.getReceiptId()), storeName);
-    // receipts..peek((k, v) -> logger.info("receipts: {} {}", k, v));
-    // receipts.print(Printed.toSysOut());
+    // receipts.peek((k, v) -> logger.debug("receipts: {} {}", k, v));
 
     final KStream<String, near.indexer.execution_outcomes.Value> outcomes = builder
         .stream(executionOutcomesTopic,
@@ -103,8 +102,7 @@ public class TokenBalance {
                 // .withTimestampExtractor(EXECUTION_OUTCOMES.timestampExtractor())) // extrect timestamp in nanoseconds
         .transform(() -> new DeduplicationTransformer<>(windowSize.toMillis(),
             (key, value) -> "execution_outcomes-"+value.getReceiptId()), storeName);
-    // outcomes.print(Printed.toSysOut());
-    // outcomes.peek((k, v) -> logger.info("outcomes: {} {}", k, v));
+    // outcomes.peek((k, v) -> logger.debug("outcomes: {} {}", k, v));
 
     final KStream<String, near.indexer.action_receipt_actions.Value> actions = builder
         .stream(actionReceiptActionsTopic,
@@ -112,8 +110,7 @@ public class TokenBalance {
                 // .withTimestampExtractor(ACTION_RECEIPT_ACTIONS.timestampExtractor())) // extrect timestamp in nanoseconds
         .transform(() -> new DeduplicationTransformer<>(windowSize.toMillis(),
             (key, value) -> "action_receipt_actions-"+value.getReceiptId()+"_"+value.getIndexInActionReceipt()), storeName);
-    // actions.print(Printed.toSysOut());
-    // actions.peek((k, v) -> logger.info("actions: {} {}", k, v));
+    // actions.peek((k, v) -> logger.debug("actions: {} {}", k, v));
 
     final KStream<String, near.indexer.receipts_outcomes_actions.Value> receiptOutcomeAction = receipts
         .join(outcomes, (receipt, outcome) -> new near.indexer.receipts_outcomes_actions.Value(receipt, outcome, null),
@@ -122,9 +119,9 @@ public class TokenBalance {
             (receiptOutcome, action) -> new near.indexer.receipts_outcomes_actions.Value(receiptOutcome.getReceipt(),
                 receiptOutcome.getOutcome(), action),
             JoinWindows.of(Duration.ofMillis(2000)));
-    receiptOutcomeAction.peek((k, v) -> logger.info("[1] joint {} --> {} {}", k, v.getOutcome().getStatus(), v.getAction().getActionKind()));
+    receiptOutcomeAction.peek((k, v) -> logger.debug("receipt-outcome-action {} --> {} {}", k, v.getOutcome().getStatus(), v.getAction().getActionKind()));
       // .filter((key, value) -> !value.getOutcome().getStatus().equals("FAILURE") && value.getAction().getActionKind().equals("FUNCTION_CALL"))
-      // .peek((k, v) -> logger.info("[2] filter {} --> {}", k, v));
+      // .peek((k, v) -> logger.debug("[2] filter {} --> {}", k, v));
 
     //
     final Function<near.indexer.receipts_outcomes_actions.Value, near.indexer.token_transfer.Value.Builder> valueBuilder = (v) -> {
@@ -270,7 +267,7 @@ public class TokenBalance {
           }
           return result;
         });
-    tokenTransfer.peek((k, v) -> logger.info("[2] transfer: {} --> {} [{}] {}", v.getTransferFrom(), v.getTransferTo(), v.getAffectedReason(), v.getAffectedAmount()));
+    tokenTransfer.peek((k, v) -> logger.info("transfer: {} --> {} [{}] {}", v.getTransferFrom(), v.getTransferTo(), v.getAffectedReason(), v.getAffectedAmount()));
 
     //
     final KTable<String, near.indexer.token_balance.Value> tokenBalance = tokenTransfer
@@ -326,7 +323,7 @@ public class TokenBalance {
             }, Materialized.with(TOKEN_BALANCE.keySerde(), TOKEN_BALANCE.valueSerde()));
 
     tokenBalance.toStream()
-        .peek((k, v) -> logger.info("[3] balance: {} --> {} ", k, v))
+        .peek((k, v) -> logger.debug("[3] balance: {} --> {} ", k, v))
         .to(tokenBalanceTopic, Produced.with(TOKEN_BALANCE.keySerde(), TOKEN_BALANCE.valueSerde()));
 
     return new KafkaStreams(builder.build(), props);
@@ -349,7 +346,6 @@ public class TokenBalance {
     } catch (final InterruptedException e) {
        Thread.currentThread().interrupt();
     }
-    // logger.info("Started Service " + SERVICE_APP_ID);
   }
 
   public static Properties loadConfig(final String configFile) throws IOException {
@@ -391,7 +387,7 @@ public class TokenBalance {
     public KeyValue<K, V> transform(final K key, final V value) {
       final E eventId = idExtractor.apply(key, value);
       if (isDuplicate(eventId)) {
-        logger.info("==================== isDuplicate: {}", eventId);
+        logger.info("[EE]isDuplicate: {}", eventId);
         updateTimestampOfExistingEventToPreventExpiry(eventId, context.timestamp());
         return null;
       } else {
@@ -402,7 +398,6 @@ public class TokenBalance {
 
     private boolean isDuplicate(final E eventId) {
       final long eventTime = context.timestamp();
-      // logger.info("-------------------- eventTime: {}  eventId: {}", eventTime, eventId);
       final WindowStoreIterator<Long> timeIterator = eventIdStore.fetch(
         eventId,
         eventTime - leftDurationMs,
