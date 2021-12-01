@@ -61,8 +61,8 @@ public class TokenBalance {
 
     Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
 
-     final boolean doReset = args.length > 1 && args[1].equals("--reset");
-     if (doReset) {
+    final boolean doReset = args.length > 1 && args[1].equals("--reset");
+    if (doReset) {
       streams.cleanUp();
     }
 
