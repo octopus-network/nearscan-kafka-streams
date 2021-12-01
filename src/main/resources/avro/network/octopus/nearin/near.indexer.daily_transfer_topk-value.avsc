@@ -1,0 +1,18 @@
+{
+  "type": "record",
+  "name": "Value",
+  "namespace": "near.indexer.daily_transfer_topk",
+  "fields": [
+    {
+      "name": "timestamp",
+      "type": "long"
+    },
+    {
+      "name": "transfers",
+      "type": {
+        "type": "array",
+        "items": "near.indexer.token_transfer.Value"
+      }
+    }
+  ]
+}

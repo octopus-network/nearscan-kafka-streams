@@ -1,0 +1,30 @@
+{
+  "type": "record",
+  "name": "Value",
+  "namespace": "near.indexer.daily_holders",
+  "fields": [
+    {
+      "name": "account",
+      "type": "string"
+    },
+    {
+      "name": "timestamp",
+      "type": "long"
+    },
+    {
+      "name": "amount",
+      "type": {
+        "type": "bytes",
+        "scale": 0,
+        "precision": 45,
+        "connect.version": 1,
+        "connect.parameters": {
+          "scale": "0",
+          "connect.decimal.precision": "45"
+        },
+        "connect.name": "org.apache.kafka.connect.data.Decimal",
+        "logicalType": "decimal"
+      }
+    }
+  ]
+}

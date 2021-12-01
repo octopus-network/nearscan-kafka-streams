@@ -167,6 +167,7 @@
                                 <import>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.receipts-value.avsc</import>
                                 <import>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.execution_outcomes-value.avsc</import>
                                 <import>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.action_receipt_actions-value.avsc</import>
+                                <import>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.token_transfer-value.avsc</import>
                             </imports>
                             <includes>
                                 <include>near.indexer.receipts-value.avsc</include>
@@ -175,6 +176,9 @@
                                 <include>near.indexer.receipts_outcomes_actions-value.avsc</include>
                                 <include>near.indexer.token_transfer-value.avsc</include>
                                 <include>near.indexer.token_balance-value.avsc</include>
+                                <include>near.indexer.daily_activate_users-value.avsc</include>
+                                <include>near.indexer.daily_transfer_topk-value.avsc</include>
+                                <include>near.indexer.daily_holders-value.avsc</include>
                             </includes>
                             <outputDirectory>${project.build.directory}/generated-sources</outputDirectory>
                         </configuration>

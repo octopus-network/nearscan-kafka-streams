@@ -78,7 +78,12 @@ public class Schemas {
     public static Topic<String, near.indexer.execution_outcomes.Value> EXECUTION_OUTCOMES;
     public static Topic<String, near.indexer.action_receipt_actions.Value> ACTION_RECEIPT_ACTIONS;
     // output topic
+    public static Topic<String, near.indexer.receipts_outcomes_actions.Value> RECEIPTS_OUTCOMES_ACTIONS;
     public static Topic<String, near.indexer.token_balance.Value> TOKEN_BALANCE;
+    public static Topic<String, near.indexer.token_transfer.Value> TOKEN_TRANSFER;
+    public static Topic<String, near.indexer.daily_activate_users.Value> TOKEN_DAILY_ACTIVATE_USERS;
+    public static Topic<String, near.indexer.daily_transfer_topk.Value> TOKEN_DAILY_TRANSFER_TOPK;
+    public static Topic<String, near.indexer.daily_holders.Value> TOKEN_DAILY_HOLDERS;
 
     static {
       createTopics();
@@ -98,10 +103,29 @@ public class Schemas {
             return v.getReceiptIncludedInBlockTimestamp();
           });
 
+      RECEIPTS_OUTCOMES_ACTIONS = new Topic<>("near.indexer.receipts_outcomes_actions", 
+          Serdes.String(), new SpecificAvroSerde<>(), (v) -> {
+            return v.getReceipt().getIncludedInBlockTimestamp();
+          });
+
       TOKEN_BALANCE = new Topic<>("near.indexer.token_balance", 
           Serdes.String(), new SpecificAvroSerde<>(), (v) -> {
             return v.getBlockTimestamp();
           });
+
+      TOKEN_TRANSFER = new Topic<>("near.indexer.token_transfer", 
+          Serdes.String(), new SpecificAvroSerde<>(), (v) -> {
+            return v.getIncludedInBlockTimestamp();
+          });
+
+      TOKEN_DAILY_ACTIVATE_USERS = new Topic<>("near.indexer.token_daily_activate_users", 
+          Serdes.String(), new SpecificAvroSerde<>(), null);
+
+      TOKEN_DAILY_TRANSFER_TOPK = new Topic<>("near.indexer.token_daily_transfer_topk", 
+          Serdes.String(), new SpecificAvroSerde<>(), null);
+
+      TOKEN_DAILY_HOLDERS = new Topic<>("near.indexer.token_daily_holders", 
+          Serdes.String(), new SpecificAvroSerde<>(), null);
     }
   }
 

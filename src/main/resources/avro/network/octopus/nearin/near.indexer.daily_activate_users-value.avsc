@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "Value",
+  "namespace": "near.indexer.daily_activate_users",
+  "fields": [
+    {
+      "name": "timestamp",
+      "type": "long"
+    },
+    {
+      "name": "users",
+      "type": "int"
+    }
+  ]
+}
