@@ -12,10 +12,7 @@ import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
-
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
@@ -30,12 +27,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import network.octopus.nearin.util.Schemas;
-import static network.octopus.nearin.util.Schemas.Topics.RECEIPTS_OUTCOMES_ACTIONS;
+import static network.octopus.nearin.util.Schemas.Topics.TOKEN_TRANSFER;
 import static network.octopus.nearin.util.Schemas.Topics.TOKEN_DAILY_ACTIVATE_USERS;
 
 public class TokenDailyActiveUsers {
   private static final Logger logger = LoggerFactory.getLogger(TokenDailyActiveUsers.class);
-  private static final String DAILY_ACTIVE_USER = "dau";
+  private static final String DAILY_ACTIVE_USERS = "dau";
+  private static final List<String> TRANSFER_ACTIONS = List.of("mint", "withdraw", "ft_transfer_from", "ft_transfer_call_from");
 
   public static void main(final String[] args) throws Exception {
     final Properties props = loadConfig(args[0]);
@@ -58,55 +56,33 @@ public class TokenDailyActiveUsers {
   }
 
   static KafkaStreams buildKafkaStreams(final Properties props) {
-    final String tokenAddress = props.getProperty("token.address");
-    final String receiptsOutcomesActionsTopic = props.getProperty("receipts_outcomes_actions.topic.name");
+    final String tokenTransferTopic = props.getProperty("token_transfer.topic.name");
     final String tokenDailyActiveUsersTopic = props.getProperty("token_daily_activate_users.topic.name");
 
     final StreamsBuilder builder = new StreamsBuilder();
 
-    final KStream<String, near.indexer.receipts_outcomes_actions.Value> receiptOutcomeAction = builder
-        .stream(receiptsOutcomesActionsTopic,
-            Consumed.with(RECEIPTS_OUTCOMES_ACTIONS.keySerde(), RECEIPTS_OUTCOMES_ACTIONS.valueSerde())
-                // extrect timestamp in nanoseconds
-                .withTimestampExtractor(RECEIPTS_OUTCOMES_ACTIONS.timestampExtractor()));
-    receiptOutcomeAction.peek((k, v) -> logger.debug("receipt-outcome-action {} --> {} {}", k, v.getOutcome().getStatus(), v.getAction().getActionKind()));
-    
+    final KStream<String, near.indexer.token_transfer.Value> tokenTransfer = builder
+        .stream(tokenTransferTopic,
+            Consumed.with(TOKEN_TRANSFER.keySerde(), TOKEN_TRANSFER.valueSerde())
+                .withTimestampExtractor(TOKEN_TRANSFER.timestampExtractor())); // extrect timestamp in nanoseconds
+    tokenTransfer.peek((k, v) -> logger.debug("transfer: {} --> {} [{}] {}", v.getTransferFrom(), v.getTransferTo(), v.getAffectedReason(), v.getAffectedAmount()));
+
     // filter -> groupby -> windowed -> aggregate -> tostream -> map(key)
     // final KStream<Long, Long> dailyActiveUsers = receiptOutcomeAction
-    receiptOutcomeAction
-        .filter((key, value) -> value.getReceipt().getReceiverAccountId().equals(tokenAddress)
-            && !value.getOutcome().getStatus().equals("FAILURE")
-            && value.getAction().getActionKind().equals("FUNCTION_CALL"))
-        .map((key, value) -> {
-          // new                value.getReceipt().getPredecessorAccountId()
-          // mint               argsJson.get("account_id").getAsString()
-          // withdraw           value.getReceipt().getPredecessorAccountId()
-          // ft_transfer        value.getReceipt().getPredecessorAccountId()
-          // ft_transfer_call   value.getReceipt().getPredecessorAccountId()
-          final JsonObject jsonObject = new Gson().fromJson(value.getAction().getArgs(), JsonObject.class);
-          final String methodName = jsonObject.get("method_name").getAsString();
-          if (methodName.equals("mint")) {
-            final JsonObject argsJson = jsonObject.get("args_json").getAsJsonObject();
-            return KeyValue.pair(DAILY_ACTIVE_USER, argsJson.get("account_id").getAsString());
-          } else if (List.of("withdraw", "ft_transfer", "ft_transfer_call").contains(methodName)) {
-            return KeyValue.pair(DAILY_ACTIVE_USER, value.getReceipt().getPredecessorAccountId());
-          } else {
-            return KeyValue.pair(DAILY_ACTIVE_USER, "");
-          }
-        })
+    tokenTransfer
+        .filter((key, value) -> TRANSFER_ACTIONS.contains(value.getAffectedReason()))
+        .map((key, value) -> KeyValue.pair(DAILY_ACTIVE_USERS, value.getAffectedAccount()))
         .groupByKey()
         .windowedBy(TimeWindows.ofSizeAndGrace(Duration.ofDays(1), Duration.ofMinutes(10)))
         // .windowedBy(new DailyTimeWindows(ZoneOffset.UTC, 0, Duration.ofMinutes(10L)))
         .aggregate(HashSet::new, (aggKey, newValue, aggValue) -> {
-          if (!newValue.equals("")) {
-            aggValue.add(newValue);
-          }
+          aggValue.add(newValue);
           return aggValue;
         })
         .suppress(Suppressed.untilWindowCloses(Suppressed.BufferConfig.unbounded()))
         // .mapValues(value -> value.size());
         .toStream()
-        .map((wk, value) -> KeyValue.pair(wk.key(), new near.indexer.daily_activate_users.Value(wk.window().start(), value.size())))
+        .map((wk, value) -> KeyValue.pair(wk.key(), new near.indexer.daily_activate_users.Value(wk.window().end(), value.size())))
         .to(tokenDailyActiveUsersTopic,
             Produced.with(TOKEN_DAILY_ACTIVATE_USERS.keySerde(), TOKEN_DAILY_ACTIVATE_USERS.valueSerde()));
 

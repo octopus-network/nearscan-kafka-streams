@@ -8,11 +8,12 @@
       "type": "long"
     },
     {
-      "name": "transfers",
-      "type": {
-        "type": "array",
-        "items": "near.indexer.token_transfer.Value"
-      }
+      "name": "index",
+      "type": "int"
+    },
+    {
+      "name": "transfer",
+      "type": "near.indexer.token_transfer.Value"
     }
   ]
 }

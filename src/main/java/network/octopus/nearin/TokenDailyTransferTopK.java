@@ -16,11 +16,7 @@ import java.util.Properties;
 import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 
-import com.google.common.collect.Lists;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
@@ -36,13 +32,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import network.octopus.nearin.util.Schemas;
-import static network.octopus.nearin.util.Schemas.Topics.RECEIPTS_OUTCOMES_ACTIONS;
+import static network.octopus.nearin.util.Schemas.Topics.TOKEN_TRANSFER;
 import static network.octopus.nearin.util.Schemas.Topics.TOKEN_DAILY_TRANSFER_TOPK;
 
 public class TokenDailyTransferTopK {
   private static final Logger logger = LoggerFactory.getLogger(TokenDailyTransferTopK.class);
   private static final String DAILY_TRANSFER_TOPK = "topk";
   private static final int DAILY_TRANSFER_TOPK_COUNT = 10;
+  private static final List<String> TRANSFER_ACTIONS = List.of("new", "mint", "withdraw", "ft_transfer_from", "ft_transfer_call_from");
 
   public static void main(final String[] args) throws Exception {
     final Properties props = loadConfig(args[0]);
@@ -65,118 +62,20 @@ public class TokenDailyTransferTopK {
   }
 
   static KafkaStreams buildKafkaStreams(final Properties props) {
-    final String tokenAddress = props.getProperty("token.address");
-    final String receiptsOutcomesActionsTopic = props.getProperty("receipts_outcomes_actions.topic.name");
+    final String tokenTransferTopic = props.getProperty("token_transfer.topic.name");
     final String tokenDailyTransferTopKTopic = props.getProperty("token_daily_transfer_topk.topic.name");
 
     final StreamsBuilder builder = new StreamsBuilder();
 
-    final KStream<String, near.indexer.receipts_outcomes_actions.Value> receiptOutcomeAction = builder
-        .stream(receiptsOutcomesActionsTopic,
-            Consumed.with(RECEIPTS_OUTCOMES_ACTIONS.keySerde(), RECEIPTS_OUTCOMES_ACTIONS.valueSerde())
-                // extrect timestamp in nanoseconds
-                .withTimestampExtractor(RECEIPTS_OUTCOMES_ACTIONS.timestampExtractor()));
-    receiptOutcomeAction.peek((k, v) -> logger.debug("receipt-outcome-action {} --> {} {}", k, v.getOutcome().getStatus(), v.getAction().getActionKind()));
-    
-    final Function<near.indexer.receipts_outcomes_actions.Value, near.indexer.token_transfer.Value.Builder> valueBuilder = (v) -> {
-      return near.indexer.token_transfer.Value.newBuilder()
-          .setReceiptId(v.getReceipt().getReceiptId())
-          .setIncludedInBlockHash(v.getReceipt().getIncludedInBlockHash())
-          .setIncludedInChunkHash(v.getReceipt().getIncludedInChunkHash())
-          .setIndexInChunk(v.getReceipt().getIndexInChunk())
-          .setIncludedInBlockTimestamp(v.getReceipt().getIncludedInBlockTimestamp())
-          .setPredecessorAccountId(v.getReceipt().getPredecessorAccountId())
-          .setReceiverAccountId(v.getReceipt().getReceiverAccountId())
-          .setOriginatedFromTransactionHash(v.getReceipt().getOriginatedFromTransactionHash())
-          .setGasBurnt(v.getOutcome().getGasBurnt())
-          .setTokensBurnt(v.getOutcome().getTokensBurnt())
-          .setExecutorAccountId(v.getOutcome().getExecutorAccountId())
-          .setStatus(v.getOutcome().getStatus())
-          .setShardId(v.getOutcome().getShardId())
-          .setIndexInActionReceipt(v.getAction().getIndexInActionReceipt())
-          .setActionKind(v.getAction().getActionKind())
-          .setArgs(v.getAction().getArgs());
-    };
+    final KStream<String, near.indexer.token_transfer.Value> tokenTransfer = builder
+        .stream(tokenTransferTopic,
+            Consumed.with(TOKEN_TRANSFER.keySerde(), TOKEN_TRANSFER.valueSerde())
+                .withTimestampExtractor(TOKEN_TRANSFER.timestampExtractor())); // extrect timestamp in nanoseconds
+    tokenTransfer.peek((k, v) -> logger.debug("transfer: {} --> {} [{}] {}", v.getTransferFrom(), v.getTransferTo(), v.getAffectedReason(), v.getAffectedAmount()));
 
-    receiptOutcomeAction
-        .filter((key, value) -> value.getReceipt().getReceiverAccountId().equals(tokenAddress)
-            && !value.getOutcome().getStatus().equals("FAILURE")
-            && value.getAction().getActionKind().equals("FUNCTION_CALL"))
-        .flatMap((key, value) -> {
-          final JsonObject jsonObject = new Gson().fromJson(value.getAction().getArgs(), JsonObject.class);
-          final String methodName = jsonObject.get("method_name").getAsString();
-          final JsonObject argsJson = jsonObject.get("args_json").getAsJsonObject();
-          final List<KeyValue<String, near.indexer.token_transfer.Value>> result = new ArrayList<>();
-          switch (methodName) {
-              case "new": {
-                result.add(KeyValue.pair(DAILY_TRANSFER_TOPK,
-                    valueBuilder.apply(value)
-                        .setAffectedAccount(argsJson.get("owner_id").getAsString())
-                        .setAffectedAmount(new BigDecimal(argsJson.get("total_supply").getAsString()))
-                        .setAffectedReason("new")
-                        .setTransferFrom(value.getReceipt().getPredecessorAccountId()) // caller
-                        .setTransferTo(argsJson.get("owner_id").getAsString())
-                        .build()));
-                break;
-              }
-              case "mint": {
-                result.add(KeyValue.pair(DAILY_TRANSFER_TOPK,
-                    valueBuilder.apply(value)
-                        .setAffectedAccount(argsJson.get("account_id").getAsString())
-                        .setAffectedAmount(new BigDecimal(argsJson.get("amount").getAsString()))
-                        .setAffectedReason("mint")
-                        .setTransferFrom(value.getReceipt().getReceiverAccountId())
-                        .setTransferTo(argsJson.get("account_id").getAsString())
-                        .build()));
-                break;
-              }
-              case "withdraw": {
-                result.add(KeyValue.pair(DAILY_TRANSFER_TOPK,
-                    valueBuilder.apply(value)
-                        .setAffectedAccount(value.getReceipt().getPredecessorAccountId())
-                        .setAffectedAmount((new BigDecimal(argsJson.get("amount").getAsString())))
-                        .setAffectedReason("withdraw")
-                        .setTransferFrom(value.getReceipt().getPredecessorAccountId())
-                        .setTransferTo(argsJson.get("recipient").getAsString())
-                        .build()));
-                break;
-              }
-              case "ft_transfer": {
-                result.add(KeyValue.pair(DAILY_TRANSFER_TOPK,
-                    valueBuilder.apply(value)
-                        .setAffectedAccount(value.getReceipt().getPredecessorAccountId())
-                        .setAffectedAmount((new BigDecimal(argsJson.get("amount").getAsString())))
-                        .setAffectedReason("ft_transfer")
-                        .setTransferFrom(value.getReceipt().getPredecessorAccountId())
-                        .setTransferTo(argsJson.get("receiver_id").getAsString())
-                        .build()));
-                break;
-              }
-              // case "ft_transfer_call": {
-              //   result.add(KeyValue.pair(DAILY_TRANSFER_TOPK,
-              //       valueBuilder.apply(value)
-              //           .setAffectedAccount(value.getReceipt().getPredecessorAccountId())
-              //           .setAffectedAmount((new BigDecimal(argsJson.get("amount").getAsString())).negate())
-              //           .setAffectedReason("ft_transfer_call_from")
-              //           .setTransferFrom(value.getReceipt().getPredecessorAccountId())
-              //           .setTransferTo(argsJson.get("receiver_id").getAsString())
-              //           .build()));
-              //   break;
-              // }
-              case "ft_resolve_transfer": {
-                result.add(KeyValue.pair(DAILY_TRANSFER_TOPK,
-                    valueBuilder.apply(value)
-                        .setAffectedAccount(argsJson.get("sender_id").getAsString())
-                        .setAffectedAmount((new BigDecimal(argsJson.get("amount").getAsString())).negate())
-                        .setAffectedReason("ft_resolve_transfer")
-                        .setTransferFrom(argsJson.get("sender_id").getAsString())
-                        .setTransferTo(argsJson.get("receiver_id").getAsString())
-                        .build()));
-                break;
-              }
-          }
-          return result;
-        })
+    tokenTransfer
+        .filter((key, value) -> TRANSFER_ACTIONS.contains(value.getAffectedReason()))
+        .map((key, value) -> KeyValue.pair(DAILY_TRANSFER_TOPK, value))
         .groupByKey()
         .windowedBy(TimeWindows.ofSizeAndGrace(Duration.ofDays(1), Duration.ofMinutes(10)))
         .aggregate(TopKTransfers::new, (aggKey, newValue, aggValue) -> {
@@ -185,8 +84,15 @@ public class TokenDailyTransferTopK {
         })
         .suppress(Suppressed.untilTimeLimit(Duration.ofMinutes(10), Suppressed.BufferConfig.unbounded()))
         .toStream()
-        .map((wk, value) -> KeyValue.pair(wk.key(),
-            new near.indexer.daily_transfer_topk.Value(wk.window().start(), Lists.newArrayList(value))))
+        .flatMap((wk, value) -> {
+          final List<KeyValue<String, near.indexer.daily_transfer_topk.Value>> result = new ArrayList<>();
+          int index = 0;
+          for (final near.indexer.token_transfer.Value item : value) {
+            result.add(KeyValue.pair(wk.key(), new near.indexer.daily_transfer_topk.Value(wk.window().end(), index, item)));
+            index += 1;
+          }
+          return result;
+        })
         .to(tokenDailyTransferTopKTopic,
             Produced.with(TOKEN_DAILY_TRANSFER_TOPK.keySerde(), TOKEN_DAILY_TRANSFER_TOPK.valueSerde()));
 
@@ -227,8 +133,8 @@ public class TokenDailyTransferTopK {
   static class TopKTransfers implements Iterable<near.indexer.token_transfer.Value> {
     private final Map<String, near.indexer.token_transfer.Value> current = new HashMap<>();
     private final TreeSet<near.indexer.token_transfer.Value> topK = new TreeSet<>((e1, e2) -> {
-      final BigDecimal amount1 = e1.getAffectedAmount();
-      final BigDecimal amount2 = e2.getAffectedAmount();
+      final BigDecimal amount1 = e1.getAffectedAmount().abs();
+      final BigDecimal amount2 = e2.getAffectedAmount().abs();
 
       final int result = amount2.compareTo(amount1);
       if (result != 0) {

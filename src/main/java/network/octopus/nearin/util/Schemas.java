@@ -79,8 +79,8 @@ public class Schemas {
     public static Topic<String, near.indexer.action_receipt_actions.Value> ACTION_RECEIPT_ACTIONS;
     // output topic
     public static Topic<String, near.indexer.receipts_outcomes_actions.Value> RECEIPTS_OUTCOMES_ACTIONS;
-    public static Topic<String, near.indexer.token_balance.Value> TOKEN_BALANCE;
     public static Topic<String, near.indexer.token_transfer.Value> TOKEN_TRANSFER;
+    public static Topic<String, near.indexer.token_balance.Value> TOKEN_BALANCE;
     public static Topic<String, near.indexer.daily_activate_users.Value> TOKEN_DAILY_ACTIVATE_USERS;
     public static Topic<String, near.indexer.daily_transfer_topk.Value> TOKEN_DAILY_TRANSFER_TOPK;
     public static Topic<String, near.indexer.daily_holders.Value> TOKEN_DAILY_HOLDERS;
@@ -108,14 +108,14 @@ public class Schemas {
             return v.getReceipt().getIncludedInBlockTimestamp();
           });
 
-      TOKEN_BALANCE = new Topic<>("near.indexer.token_balance", 
-          Serdes.String(), new SpecificAvroSerde<>(), (v) -> {
-            return v.getBlockTimestamp();
-          });
-
       TOKEN_TRANSFER = new Topic<>("near.indexer.token_transfer", 
           Serdes.String(), new SpecificAvroSerde<>(), (v) -> {
             return v.getIncludedInBlockTimestamp();
+          });
+
+      TOKEN_BALANCE = new Topic<>("near.indexer.token_balance", 
+          Serdes.String(), new SpecificAvroSerde<>(), (v) -> {
+            return v.getBlockTimestamp();
           });
 
       TOKEN_DAILY_ACTIVATE_USERS = new Topic<>("near.indexer.token_daily_activate_users", 
