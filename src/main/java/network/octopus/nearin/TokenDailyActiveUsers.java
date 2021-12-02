@@ -37,6 +37,7 @@ public class TokenDailyActiveUsers {
 
   public static void main(final String[] args) throws Exception {
     final Properties props = loadConfig(args[0]);
+    props.put(StreamsConfig.APPLICATION_ID_CONFIG, props.getProperty("token.name") + "-daily-activate-users");
     props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
     props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, SpecificAvroSerde.class);
     // props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");

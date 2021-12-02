@@ -210,27 +210,58 @@ cd /Users/deallinker-ry/Desktop/ni/nearin ; /usr/bin/env /Library/Java/JavaVirtu
 
 # reset
 ```
-./kafka-streams-application-reset \
-  --bootstrap-servers pkc-43n10.us-central1.gcp.confluent.cloud:9092 \
-  --application-id octopus-balance \
-  --config-file ~/.confluent/java.config \
-  --input-topics near.indexer.receipts,near.indexer.execution_outcomes,near.indexer.action_receipt_actions,nearin.oct_balance \
-  --to-earliest --force
 
+export BOOTSTRAP_SERVERS="pkc-43n10.us-central1.gcp.confluent.cloud:9092"
+export TOKEN="octopus"
 
 ./kafka-streams-application-reset \
-  --bootstrap-servers pkc-43n10.us-central1.gcp.confluent.cloud:9092 \
-  --application-id octopus-balance \
+  --bootstrap-servers $BOOTSTRAP_SERVERS \
+  --application-id receipt-outcome-action \
   --config-file ~/.confluent/java.config \
   --input-topics near.indexer.receipts,near.indexer.execution_outcomes,near.indexer.action_receipt_actions \
+  --to-earliest --force
+
+./kafka-streams-application-reset \
+  --bootstrap-servers $BOOTSTRAP_SERVERS \
+  --application-id $TOKEN-transfer \
+  --config-file ~/.confluent/java.config \
+  --input-topics receipt-outcome-action \
+  --to-earliest --force
+
+./kafka-streams-application-reset \
+  --bootstrap-servers $BOOTSTRAP_SERVERS \
+  --application-id $TOKEN-balance \
+  --config-file ~/.confluent/java.config \
+  --input-topics receipt-outcome-action \
+  --to-earliest --force
+
+./kafka-streams-application-reset \
+  --bootstrap-servers $BOOTSTRAP_SERVERS \
+  --application-id $TOKEN-daily-activate-users \
+  --config-file ~/.confluent/java.config \
+  --input-topics receipt-outcome-action \
+  --to-earliest --force
+
+./kafka-streams-application-reset \
+  --bootstrap-servers $BOOTSTRAP_SERVERS \
+  --application-id $TOKEN-daily-transfer-topk \
+  --config-file ~/.confluent/java.config \
+  --input-topics receipt-outcome-action \
+  --to-earliest --force
+
+./kafka-streams-application-reset \
+  --bootstrap-servers $BOOTSTRAP_SERVERS \
+  --application-id $TOKEN-daily-holders \
+  --config-file ~/.confluent/java.config \
+  --input-topics receipt-outcome-action \
   --to-earliest --force
 
 
 ./kafka-avro-console-consumer \
   --topic nearin.oct_balance \
   --from-beginning \
-  --bootstrap-server pkc-43n10.us-central1.gcp.confluent.cloud:9092 \
-  --consumer.config /Users/ruanyu/Desktop/ni/nearin/src/main/resources/config/ccloud-dev.properties  \
+  --bootstrap-server $BOOTSTRAP_SERVERS \
+  --consumer.config ~/.confluent/java.config  \
   --property print.key=flase \
   --property print.offset=true \
   --property schema.registry.url=https://psrc-2225o.us-central1.gcp.confluent.cloud \
