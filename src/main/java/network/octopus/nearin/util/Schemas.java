@@ -78,6 +78,7 @@ public class Schemas {
     public static Topic<String, near.indexer.execution_outcomes.Value> EXECUTION_OUTCOMES;
     public static Topic<String, near.indexer.action_receipt_actions.Value> ACTION_RECEIPT_ACTIONS;
     // output topic
+    public static Topic<String, near.indexer.token_transfer.Value> TOKEN_TRANSFER;
     public static Topic<String, near.indexer.token_balance.Value> TOKEN_BALANCE;
 
     static {
@@ -98,6 +99,10 @@ public class Schemas {
             return v.getReceiptIncludedInBlockTimestamp();
           });
 
+      TOKEN_TRANSFER = new Topic<>("near.indexer.token_transfer", 
+          Serdes.String(), new SpecificAvroSerde<>(), (v) -> {
+            return v.getIncludedInBlockTimestamp();
+          });
       TOKEN_BALANCE = new Topic<>("near.indexer.token_balance", 
           Serdes.String(), new SpecificAvroSerde<>(), (v) -> {
             return v.getBlockTimestamp();

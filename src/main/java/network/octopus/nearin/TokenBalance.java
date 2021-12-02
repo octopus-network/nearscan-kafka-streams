@@ -29,6 +29,7 @@ import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.kstream.KeyValueMapper;
 import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Produced;
+import org.apache.kafka.streams.kstream.Repartitioned;
 import org.apache.kafka.streams.kstream.Transformer;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.state.StoreBuilder;
@@ -43,6 +44,7 @@ import static network.octopus.nearin.util.Schemas.Topics.RECEIPTS;
 import static network.octopus.nearin.util.Schemas.Topics.EXECUTION_OUTCOMES;
 import static network.octopus.nearin.util.Schemas.Topics.ACTION_RECEIPT_ACTIONS;
 import static network.octopus.nearin.util.Schemas.Topics.TOKEN_BALANCE;
+import static network.octopus.nearin.util.Schemas.Topics.TOKEN_TRANSFER;
 
 public class TokenBalance {
 
@@ -74,6 +76,7 @@ public class TokenBalance {
     final String receiptTopic = props.getProperty("receipts.topic.name");
     final String executionOutcomesTopic = props.getProperty("execution_outcomes.topic.name");
     final String actionReceiptActionsTopic = props.getProperty("action_receipt_actions.topic.name");
+    final String tokenTransferTopic = props.getProperty("token_transfer.topic.name");
     final String tokenBalanceTopic = props.getProperty("token_balance.topic.name");
     
     final Duration windowSize = Duration.ofMinutes(60);
@@ -266,8 +269,13 @@ public class TokenBalance {
           return result;
         });
     tokenTransfer.peek((k, v) -> logger.info("transfer: {} --> {} [{}] {}", v.getTransferFrom(), v.getTransferTo(), v.getAffectedReason(), v.getAffectedAmount()));
+    
+    // token transfer
+    tokenTransfer
+        .repartition(Repartitioned.numberOfPartitions(1))
+        .to(tokenTransferTopic, Produced.with(TOKEN_TRANSFER.keySerde(), TOKEN_TRANSFER.valueSerde()));
 
-    //
+    // token balance
     final KTable<String, near.indexer.token_balance.Value> tokenBalance = tokenTransfer
         .groupBy((key, value) -> value.getAffectedAccount())
         .aggregate(near.indexer.token_balance.Value::new,
