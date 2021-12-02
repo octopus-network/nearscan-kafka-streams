@@ -7,7 +7,7 @@ public生产的java文件public$
 schema: public -> indexer (avro generated file: near.mainnet.public$.action_receipt_actions)
 
 
-DATABASE_URL="postgres://username:password@34.85.112.76/db_mainnet?options=-c search_path%3Dlocalnet"
+DATABASE_URL="postgres://username:password@34.85.112.76/db_mainnet?options=-c search_path%3Dindexer"
 
 注释 diesel.toml [print_schema]
 M	migrations/2020-12-07-153402_initial_schema/down.sql
@@ -177,6 +177,7 @@ mvn compile jib:dockerBuild
 
 docker run -it --rm -p 7071:7071 -p 7072:7072 \
   -v $(pwd)/src/main/resources/config/dev.properties:/nearin/config.properties \
+  -v $(pwd)/tmp:/tmp
   token-balance:0.0.1
 
 curl 127.0.0.1:7071/
@@ -190,16 +191,13 @@ cd /Users/deallinker-ry/Desktop/ni/nearin ; /usr/bin/env /Library/Java/JavaVirtu
 
 # reset
 ```
-./kafka-streams-application-reset \
-  --bootstrap-servers pkc-l6ojq.asia-northeast1.gcp.confluent.cloud:9092 \
-  --application-id octopus-balance \
-  --config-file ~/.confluent/java.config \
-  --input-topics near.indexer.receipts,near.indexer.execution_outcomes,near.indexer.action_receipt_actions,nearin.oct_balance \
-  --to-earliest --force
+output topic:
+- nearin.oct_balance
+- nearin.oct_transfer
 
 
 ./kafka-streams-application-reset \
-  --bootstrap-servers pkc-l6ojq.asia-northeast1.gcp.confluent.cloud:9092 \
+  --bootstrap-servers pkc-43n10.us-central1.gcp.confluent.cloud:9092 \
   --application-id octopus-balance \
   --config-file ~/.confluent/java.config \
   --input-topics near.indexer.receipts,near.indexer.execution_outcomes,near.indexer.action_receipt_actions \
@@ -209,7 +207,7 @@ cd /Users/deallinker-ry/Desktop/ni/nearin ; /usr/bin/env /Library/Java/JavaVirtu
 ./kafka-avro-console-consumer \
   --topic nearin.oct_balance \
   --from-beginning \
-  --bootstrap-server pkc-l6ojq.asia-northeast1.gcp.confluent.cloud:9092 \
+  --bootstrap-server pkc-43n10.us-central1.gcp.confluent.cloud:9092 \
   --consumer.config /Users/ruanyu/Desktop/ni/nearin/src/main/resources/config/ccloud-dev.properties  \
   --property print.key=flase \
   --property print.offset=true \
