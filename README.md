@@ -150,6 +150,26 @@ SELECT slot_name,
   pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), confirmed_flush_lsn)) as confirmedLag,
   active
 FROM pg_replication_slots;
+
+
+SELECT
+    table_name,
+    pg_size_pretty(table_size) AS table_size,
+    pg_size_pretty(indexes_size) AS indexes_size,
+    pg_size_pretty(total_size) AS total_size
+FROM (
+    SELECT
+        table_name,
+        pg_table_size(table_name) AS table_size,
+        pg_indexes_size(table_name) AS indexes_size,
+        pg_total_relation_size(table_name) AS total_size
+    FROM (
+        SELECT ('"' || table_schema || '"."' || table_name || '"') AS table_name
+        FROM information_schema.tables
+    ) AS all_tables
+    ORDER BY total_size DESC
+) AS pretty_sizes;
+
 ```
 
 # maven
@@ -191,7 +211,7 @@ cd /Users/deallinker-ry/Desktop/ni/nearin ; /usr/bin/env /Library/Java/JavaVirtu
 # reset
 ```
 ./kafka-streams-application-reset \
-  --bootstrap-servers pkc-l6ojq.asia-northeast1.gcp.confluent.cloud:9092 \
+  --bootstrap-servers pkc-43n10.us-central1.gcp.confluent.cloud:9092 \
   --application-id octopus-balance \
   --config-file ~/.confluent/java.config \
   --input-topics near.indexer.receipts,near.indexer.execution_outcomes,near.indexer.action_receipt_actions,nearin.oct_balance \
@@ -199,7 +219,7 @@ cd /Users/deallinker-ry/Desktop/ni/nearin ; /usr/bin/env /Library/Java/JavaVirtu
 
 
 ./kafka-streams-application-reset \
-  --bootstrap-servers pkc-l6ojq.asia-northeast1.gcp.confluent.cloud:9092 \
+  --bootstrap-servers pkc-43n10.us-central1.gcp.confluent.cloud:9092 \
   --application-id octopus-balance \
   --config-file ~/.confluent/java.config \
   --input-topics near.indexer.receipts,near.indexer.execution_outcomes,near.indexer.action_receipt_actions \
@@ -209,7 +229,7 @@ cd /Users/deallinker-ry/Desktop/ni/nearin ; /usr/bin/env /Library/Java/JavaVirtu
 ./kafka-avro-console-consumer \
   --topic nearin.oct_balance \
   --from-beginning \
-  --bootstrap-server pkc-l6ojq.asia-northeast1.gcp.confluent.cloud:9092 \
+  --bootstrap-server pkc-43n10.us-central1.gcp.confluent.cloud:9092 \
   --consumer.config /Users/ruanyu/Desktop/ni/nearin/src/main/resources/config/ccloud-dev.properties  \
   --property print.key=flase \
   --property print.offset=true \
