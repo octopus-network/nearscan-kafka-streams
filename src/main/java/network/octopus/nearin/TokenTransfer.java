@@ -35,7 +35,8 @@ public class TokenTransfer {
   private static final Logger logger = LoggerFactory.getLogger(TokenTransfer.class);
 
   public static void main(final String[] args) throws Exception {
-    final Properties props = loadConfig(args[0]);
+    // final Properties props = loadConfig(args[0]);
+    final Properties props = loadConfig("/Users/deallinker-ry/Documents/github/octopus-network/nearin/src/main/resources/config/dev.properties");
     props.put(StreamsConfig.APPLICATION_ID_CONFIG, props.getProperty("token.name") + "-transfer");
     props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
     props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, SpecificAvroSerde.class);
@@ -67,7 +68,7 @@ public class TokenTransfer {
             Consumed.with(RECEIPTS_OUTCOMES_ACTIONS.keySerde(), RECEIPTS_OUTCOMES_ACTIONS.valueSerde())
                 // extrect timestamp in nanoseconds
                 .withTimestampExtractor(RECEIPTS_OUTCOMES_ACTIONS.timestampExtractor()));
-    receiptOutcomeAction.peek((k, v) -> logger.debug("receipt-outcome-action {} --> {} {}", k, v.getOutcome().getStatus(), v.getAction().getActionKind()));
+    receiptOutcomeAction.peek((k, v) -> logger.debug("receipt-outcome-action {} --> {}", k, v));
 
     final Function<near.indexer.receipts_outcomes_actions.Value, near.indexer.token_transfer.Value.Builder> valueBuilder = (v) -> {
       return near.indexer.token_transfer.Value.newBuilder()
@@ -93,11 +94,13 @@ public class TokenTransfer {
         .filter((key, value) -> value.getReceipt().getReceiverAccountId().equals(tokenAddress)
             && !value.getOutcome().getStatus().equals("FAILURE")
             && value.getAction().getActionKind().equals("FUNCTION_CALL"))
-        .flatMapValues(value -> {
+        .flatMap((key, value) -> {
+          final String predecessor = value.getReceipt().getPredecessorAccountId();
+          final String receiver = value.getReceipt().getReceiverAccountId();
           final JsonObject jsonObject = new Gson().fromJson(value.getAction().getArgs(), JsonObject.class);
           final String methodName = jsonObject.get("method_name").getAsString();
           final JsonObject argsJson = jsonObject.get("args_json").getAsJsonObject();
-          final List<near.indexer.token_transfer.Value> result = new ArrayList<>();
+          final List<KeyValue<String, near.indexer.token_transfer.Value>> result = new ArrayList<>();
           switch (methodName) {
               // {
               //   "gas": 100000000000000,
@@ -113,100 +116,155 @@ public class TokenTransfer {
               //     "owner_id": "madtest.testnet",
               //     "total_supply": "100000000000000000000000000000000"
               //   },
-              //   "args_base64": "eyJvd25lcl9pZCI6Im1hZHRlc3QudGVzdG5ldCIsInRvdGFsX3N1cHBseSI6IjEwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMCIsIm1ldGFkYXRhIjp7InNwZWMiOiJmdC0xLjAuMCIsIm5hbWUiOiJPQ1RUb2tlbiIsInN5bWJvbCI6Ik9DVCIsImljb24iOiJodHRwczovL29jdC5uZXR3b3JrL2Fzc2V0cy9pbWcvb2N0ZmF2aWNvbi5pY28iLCJkZWNpbWFscyI6MjR9fQ==",
               //   "method_name": "new"
               // }
               case "new": {
-                result.add(valueBuilder.apply(value)
-                    .setAffectedAccount(argsJson.get("owner_id").getAsString())
-                    .setAffectedAmount(new BigDecimal(argsJson.get("total_supply").getAsString()))
-                    .setAffectedReason("new")
-                    .setTransferFrom(value.getReceipt().getPredecessorAccountId()) // caller
-                    .setTransferTo(argsJson.get("owner_id").getAsString())
-                    .build());
+                if (argsJson.has("owner_id") && argsJson.has("total_supply") && argsJson.has("metadata")) {
+                  final String owner_id = argsJson.get("owner_id").getAsString();
+                  final String total_supply = argsJson.get("total_supply").getAsString();
+                  final JsonObject metadata = argsJson.get("metadata").getAsJsonObject();
+                  if (metadata.has("spec") && metadata.get("spec").getAsString().contains("ft-")) {
+                    result.add(KeyValue.pair(owner_id, 
+                        valueBuilder.apply(value)
+                            .setAffectedAccount(owner_id)
+                            .setAffectedAmount(new BigDecimal(total_supply))
+                            .setAffectedReason("new")
+                            .setTransferFrom(predecessor) // caller
+                            .setTransferTo(owner_id)
+                            .build()));
+                    // TODO: monitor new ft-1.0.0 contracts
+                  }
+                }
                 break;
               }
+              // {
+              //   "gas": 10000000000000,
+              //   "deposit": "58280000000000000000000",
+              //   "args_json": {
+              //       "amount": "2500000000000000000000000",
+              //       "account_id": "louisliu.near"
+              //   },
+              //   "method_name": "mint"
+              // }
               case "mint": {
-                result.add(valueBuilder.apply(value)
-                    .setAffectedAccount(argsJson.get("account_id").getAsString())
-                    .setAffectedAmount(new BigDecimal(argsJson.get("amount").getAsString()))
-                    .setAffectedReason("mint")
-                    .setTransferFrom(value.getReceipt().getReceiverAccountId())
-                    .setTransferTo(argsJson.get("account_id").getAsString())
-                    .build());
+                final String account_id = argsJson.get("account_id").getAsString();
+                final String amount = argsJson.get("amount").getAsString();
+                result.add(KeyValue.pair(account_id, 
+                    valueBuilder.apply(value)
+                        .setAffectedAccount(account_id)
+                        .setAffectedAmount(new BigDecimal(amount))
+                        .setAffectedReason("mint")
+                        .setTransferFrom(receiver) // receiver(ft-contract) ? predecessor(bridge) ?
+                        .setTransferTo(account_id)
+                        .build()));
                 break;
               }
+              // {
+              //   "gas": 100000000000000,
+              //   "deposit": "1",
+              //   "args_json": {
+              //     "amount": "63442049574773100000",
+              //     "recipient": "5d6c47cfdbbe5ad5a7be0a97d519164d303e1117"
+              //   },
+              //   "method_name": "withdraw"
+              // }
               case "withdraw": {
-                result.add(valueBuilder.apply(value)
-                    .setAffectedAccount(value.getReceipt().getPredecessorAccountId())
-                    .setAffectedAmount((new BigDecimal(argsJson.get("amount").getAsString())).negate())
-                    .setAffectedReason("withdraw")
-                    .setTransferFrom(value.getReceipt().getPredecessorAccountId())
-                    .setTransferTo(argsJson.get("recipient").getAsString())
-                    .build());
+                final String recipient = argsJson.get("recipient").getAsString();
+                final String amount = argsJson.get("amount").getAsString();
+                result.add(KeyValue.pair(predecessor, 
+                    valueBuilder.apply(value)
+                        .setAffectedAccount(predecessor)
+                        .setAffectedAmount(new BigDecimal(amount).negate())
+                        .setAffectedReason("withdraw")
+                        .setTransferFrom(predecessor)
+                        .setTransferTo(recipient)
+                        .build()));
                 break;
               }
+              // {
+              //   "gas": 5000000000000,
+              //   "deposit": "1",
+              //   "args_json": {
+              //     "memo": null,
+              //     "amount": "4116253556015596461",
+              //     "receiver_id": "sbh2k.near"
+              //   },
+              //   "method_name": "ft_transfer"
+              // }
               case "ft_transfer": {
-                result.add(valueBuilder.apply(value)
-                    .setAffectedAccount(value.getReceipt().getPredecessorAccountId())
-                    .setAffectedAmount((new BigDecimal(argsJson.get("amount").getAsString())).negate())
-                    .setAffectedReason("ft_transfer_from")
-                    .setTransferFrom(value.getReceipt().getPredecessorAccountId())
-                    .setTransferTo(argsJson.get("receiver_id").getAsString())
-                    .build());
-                result.add(valueBuilder.apply(value)
-                    .setAffectedAccount(argsJson.get("receiver_id").getAsString())
-                    .setAffectedAmount(new BigDecimal(argsJson.get("amount").getAsString()))
-                    .setAffectedReason("ft_transfer_to")
-                    .setTransferFrom(value.getReceipt().getPredecessorAccountId())
-                    .setTransferTo(argsJson.get("receiver_id").getAsString())
-                    .build());
+                final String receiver_id = argsJson.get("receiver_id").getAsString();
+                final String amount = argsJson.get("amount").getAsString();
+                result.add(KeyValue.pair(predecessor, 
+                    valueBuilder.apply(value)
+                        .setAffectedAccount(predecessor)
+                        .setAffectedAmount(new BigDecimal(amount).negate())
+                        .setAffectedReason("ft_transfer_from")
+                        .setTransferFrom(predecessor)
+                        .setTransferTo(receiver_id)
+                        .build()));
+                result.add(KeyValue.pair(receiver_id, 
+                    valueBuilder.apply(value)
+                        .setAffectedAccount(receiver_id)
+                        .setAffectedAmount(new BigDecimal(amount))
+                        .setAffectedReason("ft_transfer_to")
+                        .setTransferFrom(predecessor)
+                        .setTransferTo(receiver_id)
+                        .build()));
                 break;
               }
+
               // case "ft_transfer_call": {
-              //   result.add(valueBuilder.apply(value)
-              //       .setAffectedAccount(value.getReceipt().getPredecessorAccountId())
-              //       .setAffectedAmount((new BigDecimal(argsJson.get("amount").getAsString())).negate())
-              //       .setAffectedReason("ft_transfer_call_from")
-              //       .setTransferFrom(value.getReceipt().getPredecessorAccountId())
-              //       .setTransferTo(argsJson.get("receiver_id").getAsString())
-              //       .build());
-              //   result.add(valueBuilder.apply(value)
-              //       .setAffectedAccount(argsJson.get("receiver_id").getAsString())
-              //       .setAffectedAmount(new BigDecimal(argsJson.get("amount").getAsString()))
-              //       .setAffectedReason("ft_transfer_call_to")
-              //       .setTransferFrom(value.getReceipt().getPredecessorAccountId())
-              //       .setTransferTo(argsJson.get("receiver_id").getAsString())
-              //       .build());
+              //   final String receiver_id = argsJson.get("receiver_id").getAsString();
+              //   final String amount = argsJson.get("amount").getAsString();
+              //   result.add(KeyValue.pair(predecessor, 
+              //       valueBuilder.apply(value)
+              //           .setAffectedAccount(predecessor)
+              //           .setAffectedAmount(new BigDecimal(amount).negate())
+              //           .setAffectedReason("ft_transfer_call_from")
+              //           .setTransferFrom(predecessor)
+              //           .setTransferTo(receiver_id)
+              //           .build()));
+              //   result.add(KeyValue.pair(receiver_id, 
+              //       valueBuilder.apply(value)
+              //           .setAffectedAccount(receiver_id)
+              //           .setAffectedAmount(new BigDecimal(amount))
+              //           .setAffectedReason("ft_transfer_call_to")
+              //           .setTransferFrom(predecessor)
+              //           .setTransferTo(receiver_id)
+              //           .build()));
               //   break;
               // }
 
               // {
-              // "gas": 5000000000000,
-              // "deposit": "0",
-              // "args_json": {
-              // "amount": "2500000000000000000000000",
-              // "sender_id": "louisliu.near",
-              // "receiver_id": "skyward.near"
-              // },
-              // "args_base64": "eyJzZW5kZXJfaWQiOiJsb3Vpc2xpdS5uZWFyIiwicmVjZWl2ZXJfaWQiOiJza3l3YXJkLm5lYXIiLCJhbW91bnQiOiIyNTAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIn0=",
-              // "method_name": "ft_resolve_transfer"
+              //   "gas": 5000000000000,
+              //   "deposit": "0",
+              //   "args_json": {
+              //     "amount": "2500000000000000000000000",
+              //     "sender_id": "louisliu.near",
+              //     "receiver_id": "skyward.near"
+              //   },
+              //   "method_name": "ft_resolve_transfer"
               // }
               case "ft_resolve_transfer": {
-                result.add(valueBuilder.apply(value)
-                    .setAffectedAccount(argsJson.get("sender_id").getAsString())
-                    .setAffectedAmount((new BigDecimal(argsJson.get("amount").getAsString())).negate())
-                    .setAffectedReason("ft_resolve_transfer_from")
-                    .setTransferFrom(argsJson.get("sender_id").getAsString())
-                    .setTransferTo(argsJson.get("receiver_id").getAsString())
-                    .build());
-                result.add(valueBuilder.apply(value)
-                    .setAffectedAccount(argsJson.get("receiver_id").getAsString())
-                    .setAffectedAmount(new BigDecimal(argsJson.get("amount").getAsString()))
-                    .setAffectedReason("ft_resolve_transfer_to")
-                    .setTransferFrom(argsJson.get("sender_id").getAsString())
-                    .setTransferTo(argsJson.get("receiver_id").getAsString())
-                    .build());
+                final String sender_id = argsJson.get("sender_id").getAsString();
+                final String receiver_id = argsJson.get("receiver_id").getAsString();
+                final String amount = argsJson.get("amount").getAsString();
+                result.add(KeyValue.pair(sender_id, 
+                    valueBuilder.apply(value)
+                        .setAffectedAccount(sender_id)
+                        .setAffectedAmount(new BigDecimal(amount).negate())
+                        .setAffectedReason("ft_resolve_transfer_from")
+                        .setTransferFrom(sender_id)
+                        .setTransferTo(receiver_id)
+                        .build()));
+                result.add(KeyValue.pair(receiver_id, 
+                    valueBuilder.apply(value)
+                        .setAffectedAccount(receiver_id)
+                        .setAffectedAmount(new BigDecimal(amount))
+                        .setAffectedReason("ft_resolve_transfer_to")
+                        .setTransferFrom(sender_id)
+                        .setTransferTo(receiver_id)
+                        .build()));
                 break;
               }
           }
@@ -215,7 +273,7 @@ public class TokenTransfer {
 
         tokenTransfer
             .peek((k, v) -> logger.debug("transfer: {} --> {} [{}] {}", v.getTransferFrom(), v.getTransferTo(), v.getAffectedReason(), v.getAffectedAmount()))
-            .map((key, value) -> KeyValue.pair(value.getAffectedAccount(), value)) // <account, transfer>
+            // .map((key, value) -> KeyValue.pair(value.getAffectedAccount(), value)) // <account, transfer>
             .to(tokenTransferTopic, Produced.with(TOKEN_TRANSFER.keySerde(), TOKEN_TRANSFER.valueSerde()));
 
     return new KafkaStreams(builder.build(), props);

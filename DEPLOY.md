@@ -111,11 +111,20 @@ register schema   :   mvn schema-registry:register
 mvn schema-registry:register
 mvn compile jib:dockerBuild
 
+
 docker run -d -p 7071:7071 -p 7072:7072 \
   -v $(pwd)/src/main/resources/config/dev.properties:/nearin/config.properties \
-  token-balance:0.0.1
-
+  nearin:0.0.1
 
 docker run -it --rm -p 7071:7071 -p 7072:7072 \
   -v $(pwd)/src/main/resources/config/dev.properties:/nearin/config.properties \
-  token-balance:0.0.1
+  nearin:0.0.1
+
+docker run -it --rm -p 7071:7071 -p 7072:7072 \
+  -v $(pwd)/src/main/resources/config/dev.properties:/nearin/config.properties \
+  --entrypoint bash \
+  nearin:0.0.1
+
+java -javaagent:/nearin/jmx_prometheus_javaagent-0.16.1.jar=7071:/nearin/streams-config.yml -javaagent:/nearin/jolokia-jvm-1.7.1.jar=port=7072,host=* -Xdebug -cp @/app/jib-classpath-file network.octopus.nearin.TokenTransfer /nearin/config.properties
+
+java -javaagent:/nearin/jmx_prometheus_javaagent-0.16.1.jar=7071:/nearin/streams-config.yml -javaagent:/nearin/jolokia-jvm-1.7.1.jar=port=7072,host=* -Xdebug -cp @/app/jib-classpath-file network.octopus.nearin.TokenBalance /nearin/config.properties
