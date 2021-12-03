@@ -10,7 +10,8 @@ services:
       "-Xdebug", 
       "-cp", 
       "@/app/jib-classpath-file", 
-      "network.octopus.nearin.ReceiptOutcomeAction"
+      "network.octopus.nearin.ReceiptOutcomeAction",
+      "/nearin/config.properties"
     ]
     ports:
       - 7001:7071
@@ -29,7 +30,8 @@ services:
       "-Xdebug", 
       "-cp", 
       "@/app/jib-classpath-file", 
-      "network.octopus.nearin.TokenTransfer"
+      "network.octopus.nearin.TokenTransfer",
+      "/nearin/config.properties"
     ]
     ports:
       - 7011:7071
@@ -48,7 +50,8 @@ services:
       "-Xdebug", 
       "-cp", 
       "@/app/jib-classpath-file", 
-      "network.octopus.nearin.TokenBalance"
+      "network.octopus.nearin.TokenBalance",
+      "/nearin/config.properties"
     ]
     ports:
       - 7021:7071
