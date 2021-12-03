@@ -1,0 +1,58 @@
+version: '3'
+services:
+  receipt_outcome_action:
+    image: nearin:0.0.1
+    container_name: receipt_outcome_action
+    entrypoint: [
+      "java",
+      "-javaagent:/nearin/jmx_prometheus_javaagent-0.16.1.jar=7071:/nearin/streams-config.yml", 
+      "-javaagent:/nearin/jolokia-jvm-1.7.1.jar=port=7072,host=*", 
+      "-Xdebug", 
+      "-cp", 
+      "@/app/jib-classpath-file", 
+      "network.octopus.nearin.ReceiptOutcomeAction"
+    ]
+    ports:
+      - 7071:7071
+      - 7072:7072
+    volumes:
+      - ./src/main/resources/config/dev.properties:/nearin/config.properties
+    restart: always
+
+  token_transfer:
+    image: nearin:0.0.1
+    container_name: token_transfer
+    entrypoint: [
+      "java",
+      "-javaagent:/nearin/jmx_prometheus_javaagent-0.16.1.jar=7071:/nearin/streams-config.yml", 
+      "-javaagent:/nearin/jolokia-jvm-1.7.1.jar=port=7072,host=*", 
+      "-Xdebug", 
+      "-cp", 
+      "@/app/jib-classpath-file", 
+      "network.octopus.nearin.TokenTransfer"
+    ]
+    ports:
+      - 7071:7071
+      - 7072:7072
+    volumes:
+      - ./src/main/resources/config/dev.properties:/nearin/config.properties
+    restart: always
+
+  token_balance:
+    image: nearin:0.0.1
+    container_name: token_balance
+    entrypoint: [
+      "java",
+      "-javaagent:/nearin/jmx_prometheus_javaagent-0.16.1.jar=7071:/nearin/streams-config.yml", 
+      "-javaagent:/nearin/jolokia-jvm-1.7.1.jar=port=7072,host=*", 
+      "-Xdebug", 
+      "-cp", 
+      "@/app/jib-classpath-file", 
+      "network.octopus.nearin.Balance"
+    ]
+    ports:
+      - 7071:7071
+      - 7072:7072
+    volumes:
+      - ./src/main/resources/config/dev.properties:/nearin/config.properties
+    restart: always
