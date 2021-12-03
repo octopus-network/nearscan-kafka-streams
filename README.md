@@ -210,50 +210,54 @@ cd /Users/deallinker-ry/Desktop/ni/nearin ; /usr/bin/env /Library/Java/JavaVirtu
 
 # reset
 ```
-export BOOTSTRAP_SERVERS="pkc-4yyd6.us-east1.gcp.confluent.cloud:9092"    # dev
-export BOOTSTRAP_SERVERS="pkc-43n10.us-central1.gcp.confluent.cloud:9092" # testnet
 export TOKEN="octopus"
+export BOOTSTRAP_SERVERS="pkc-4yyd6.us-east1.gcp.confluent.cloud:9092"    # dev
+export CONFIG_FILE="/Users/deallinker-ry/Documents/github/octopus-network/nearin/src/main/resources/config/dev-ccloud.properties"
+
+export TOKEN="octopus"
+export BOOTSTRAP_SERVERS="pkc-43n10.us-central1.gcp.confluent.cloud:9092" # testnet
+export CONFIG_FILE="/Users/deallinker-ry/Documents/github/octopus-network/nearin/src/main/resources/config/testnet-ccloud.properties"
 
 ./kafka-streams-application-reset \
   --bootstrap-servers $BOOTSTRAP_SERVERS \
   --application-id receipt-outcome-action \
-  --config-file ~/.confluent/java.config \
+  --config-file $CONFIG_FILE \
   --input-topics near.indexer.receipts,near.indexer.execution_outcomes,near.indexer.action_receipt_actions \
   --to-earliest --force
 
 ./kafka-streams-application-reset \
   --bootstrap-servers $BOOTSTRAP_SERVERS \
   --application-id $TOKEN-transfer \
-  --config-file ~/.confluent/java.config \
-  --input-topics receipt-outcome-action \
+  --config-file $CONFIG_FILE \
+  --input-topics nearin.receipts_outcomes_actions \
   --to-earliest --force
 
 ./kafka-streams-application-reset \
   --bootstrap-servers $BOOTSTRAP_SERVERS \
   --application-id $TOKEN-balance \
-  --config-file ~/.confluent/java.config \
-  --input-topics receipt-outcome-action \
+  --config-file $CONFIG_FILE \
+  --input-topics nearin.receipts_outcomes_actions \
   --to-earliest --force
 
 ./kafka-streams-application-reset \
   --bootstrap-servers $BOOTSTRAP_SERVERS \
   --application-id $TOKEN-daily-activate-users \
-  --config-file ~/.confluent/java.config \
-  --input-topics receipt-outcome-action \
+  --config-file $CONFIG_FILE \
+  --input-topics nearin.receipts_outcomes_actions \
   --to-earliest --force
 
 ./kafka-streams-application-reset \
   --bootstrap-servers $BOOTSTRAP_SERVERS \
   --application-id $TOKEN-daily-transfer-topk \
-  --config-file ~/.confluent/java.config \
-  --input-topics receipt-outcome-action \
+  --config-file $CONFIG_FILE \
+  --input-topics nearin.receipts_outcomes_actions \
   --to-earliest --force
 
 ./kafka-streams-application-reset \
   --bootstrap-servers $BOOTSTRAP_SERVERS \
   --application-id $TOKEN-daily-holders \
-  --config-file ~/.confluent/java.config \
-  --input-topics receipt-outcome-action \
+  --config-file $CONFIG_FILE \
+  --input-topics nearin.receipts_outcomes_actions \
   --to-earliest --force
 
 
@@ -261,7 +265,7 @@ export TOKEN="octopus"
   --topic nearin.oct_balance \
   --from-beginning \
   --bootstrap-server $BOOTSTRAP_SERVERS \
-  --consumer.config ~/.confluent/java.config  \
+  --consumer.config $CONFIG_FILE  \
   --property print.key=flase \
   --property print.offset=true \
   --property schema.registry.url=https://psrc-2225o.us-central1.gcp.confluent.cloud \
