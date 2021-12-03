@@ -216,6 +216,9 @@
                         <near.indexer.receipts_outcomes_actions-value>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.receipts_outcomes_actions-value.avsc</near.indexer.receipts_outcomes_actions-value>
                         <near.indexer.token_balance-value>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.token_balance-value.avsc</near.indexer.token_balance-value>
                         <near.indexer.token_transfer-value>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.token_transfer-value.avsc</near.indexer.token_transfer-value>
+                        <near.indexer.daily_activate_users-value>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.daily_activate_users-value.avsc</near.indexer.daily_activate_users-value>
+                        <near.indexer.daily_transfer_topk-value>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.daily_transfer_topk-value.avsc</near.indexer.daily_transfer_topk-value>
+                        <near.indexer.daily_holders-value>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.daily_holders-value.avsc</near.indexer.daily_holders-value>
                     </subjects>
                     <schemaTypes>
                         <near.indexer.action_receipt_actions-value>AVRO</near.indexer.action_receipt_actions-value>
@@ -224,6 +227,9 @@
                         <near.indexer.receipts_outcomes_actions-value>AVRO</near.indexer.receipts_outcomes_actions-value>
                         <near.indexer.token_balance-value>AVRO</near.indexer.token_balance-value>
                         <near.indexer.token_transfer-value>AVRO</near.indexer.token_transfer-value>
+                        <near.indexer.daily_activate_users-value>AVRO</near.indexer.daily_activate_users-value>
+                        <near.indexer.daily_transfer_topk-value>AVRO</near.indexer.daily_transfer_topk-value>
+                        <near.indexer.daily_holders-value>AVRO</near.indexer.daily_holders-value>
                     </schemaTypes>
                     <references>
                         <near.indexer.receipts_outcomes_actions-value>
@@ -240,6 +246,12 @@
                                 <subject>near.indexer.action_receipt_actions-value</subject>
                             </reference>
                         </near.indexer.receipts_outcomes_actions-value>
+                        <near.indexer.daily_transfer_topk-value>
+                            <reference>
+                                <name>near.indexer.token_transfer.Value</name>
+                                <subject>near.indexer.token_transfer-value</subject>
+                            </reference>
+                        </near.indexer.daily_transfer_topk-value>
                     </references>
                 </configuration>
                 <goals>

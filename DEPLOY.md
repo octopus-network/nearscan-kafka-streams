@@ -42,7 +42,8 @@ diesel migration run
 cargo run --release -- --home-dir /mnt/disks/indexer/.near/testnet init --chain-id testnet --download-genesis
 cargo run --release -- --home-dir /mnt/disks/indexer/.near/testnet run --store-genesis --stream-while-syncing --concurrency 1 sync-from-latest
 ## oct.beta_oct_relay.testnet : 61741054
-cargo run --release -- --home-dir /mnt/disks/indexer/.near/testnet run --store-genesis --stream-while-syncing --allow-missing-relations-in-first-blocks 1000 --concurrency 1 sync-from-block --height 61730000
+cargo run --release -- --home-dir /mnt/disks/indexer/.near/testnet run --store-genesis --stream-while-syncing --non-strict-mode --concurrency 1 sync-from-block --height 61730000 2>&1 | tee -a ../indexer.log
+
 
 
 select * from action_receipt_actions ara 

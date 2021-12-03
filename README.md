@@ -210,8 +210,8 @@ cd /Users/deallinker-ry/Desktop/ni/nearin ; /usr/bin/env /Library/Java/JavaVirtu
 
 # reset
 ```
-
-export BOOTSTRAP_SERVERS="pkc-43n10.us-central1.gcp.confluent.cloud:9092"
+export BOOTSTRAP_SERVERS="pkc-4yyd6.us-east1.gcp.confluent.cloud:9092"    # dev
+export BOOTSTRAP_SERVERS="pkc-43n10.us-central1.gcp.confluent.cloud:9092" # testnet
 export TOKEN="octopus"
 
 ./kafka-streams-application-reset \
@@ -348,3 +348,5 @@ rules:
     "tasks.max": "1"
   }
 }
+
+https://docs.confluent.io/platform/current/connect/transforms/flatten.html
