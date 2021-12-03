@@ -68,8 +68,8 @@ public class ReceiptOutcomeAction {
     final String actionReceiptActionsTopic = props.getProperty("action_receipt_actions.topic.name");
     final String receiptsOutcomesActionsTopic = props.getProperty("receipts_outcomes_actions.topic.name");
     
-    final Duration windowSize = Duration.ofMinutes(60);
-    final Duration retentionPeriod = Duration.ofDays(3);
+    final Duration windowSize = Duration.ofMinutes(30);
+    final Duration retentionPeriod = Duration.ofMinutes(30);
 
     final StreamsBuilder builder = new StreamsBuilder();
 
