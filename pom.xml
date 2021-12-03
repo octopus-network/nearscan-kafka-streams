@@ -329,7 +329,7 @@
                         <image>openjdk:17-jdk-slim</image>
                     </from>
                     <to>
-                        <image>token-balance:0.0.1</image>
+                        <image>nearin:0.0.1</image>
                         <!-- <image>gcr.io/project/my-app</image> -->
                     </to>
                     <container>
@@ -339,7 +339,7 @@
                             <jvmFlag>-javaagent:/nearin/jolokia-jvm-1.7.1.jar=port=7072,host=*</jvmFlag>
                             <jvmFlag>-Xdebug</jvmFlag>
                         </jvmFlags>
-                        <mainClass>network.octopus.nearin.TokenBalance</mainClass>
+                        <mainClass>network.octopus.nearin.ReceiptOutcomeAction</mainClass>
                         <args>
                             <arg>/nearin/config.properties</arg>
                         </args>
