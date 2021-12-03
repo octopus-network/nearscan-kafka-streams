@@ -62,7 +62,7 @@ public class TokenDailyHolders {
 
   static KafkaStreams buildKafkaStreams(final Properties props) {
     final String tokenTransferTopic = props.getProperty("token_transfer.topic.name");
-    final String tokenDailyHolderTopic = props.getProperty("token_daily_holder.topic.name");
+    final String tokenDailyHolderTopic = props.getProperty("token_daily_holders.topic.name");
 
     final StreamsBuilder builder = new StreamsBuilder();
 

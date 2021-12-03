@@ -211,13 +211,16 @@ cd /Users/deallinker-ry/Desktop/ni/nearin ; /usr/bin/env /Library/Java/JavaVirtu
 # reset
 ```
 export TOKEN="octopus"
+export TOKEN_TRANSFER_TOPIC="nearin.oct-transfer"
 export BOOTSTRAP_SERVERS="pkc-4yyd6.us-east1.gcp.confluent.cloud:9092"    # dev
 export CONFIG_FILE="/Users/deallinker-ry/Documents/github/octopus-network/nearin/src/main/resources/config/dev-ccloud.properties"
 
 export TOKEN="octopus"
 export BOOTSTRAP_SERVERS="pkc-43n10.us-central1.gcp.confluent.cloud:9092" # testnet
 export CONFIG_FILE="/Users/deallinker-ry/Documents/github/octopus-network/nearin/src/main/resources/config/testnet-ccloud.properties"
+```
 
+### receipt-outcome-action
 ./kafka-streams-application-reset \
   --bootstrap-servers $BOOTSTRAP_SERVERS \
   --application-id receipt-outcome-action \
@@ -225,6 +228,7 @@ export CONFIG_FILE="/Users/deallinker-ry/Documents/github/octopus-network/nearin
   --input-topics near.indexer.receipts,near.indexer.execution_outcomes,near.indexer.action_receipt_actions \
   --to-earliest --force
 
+### $TOKEN-transfer
 ./kafka-streams-application-reset \
   --bootstrap-servers $BOOTSTRAP_SERVERS \
   --application-id $TOKEN-transfer \
@@ -232,35 +236,40 @@ export CONFIG_FILE="/Users/deallinker-ry/Documents/github/octopus-network/nearin
   --input-topics nearin.receipts_outcomes_actions \
   --to-earliest --force
 
+### $TOKEN-balance
 ./kafka-streams-application-reset \
   --bootstrap-servers $BOOTSTRAP_SERVERS \
   --application-id $TOKEN-balance \
   --config-file $CONFIG_FILE \
-  --input-topics nearin.receipts_outcomes_actions \
+  --input-topics $TOKEN_TRANSFER_TOPIC \
   --to-earliest --force
 
+### $TOKEN-daily-activate-users
 ./kafka-streams-application-reset \
   --bootstrap-servers $BOOTSTRAP_SERVERS \
   --application-id $TOKEN-daily-activate-users \
   --config-file $CONFIG_FILE \
-  --input-topics nearin.receipts_outcomes_actions \
+  --input-topics $TOKEN_TRANSFER_TOPIC \
   --to-earliest --force
 
+### $TOKEN-daily-transfer-topk
 ./kafka-streams-application-reset \
   --bootstrap-servers $BOOTSTRAP_SERVERS \
   --application-id $TOKEN-daily-transfer-topk \
   --config-file $CONFIG_FILE \
-  --input-topics nearin.receipts_outcomes_actions \
+  --input-topics $TOKEN_TRANSFER_TOPIC \
   --to-earliest --force
 
+### $TOKEN-daily-holders
 ./kafka-streams-application-reset \
   --bootstrap-servers $BOOTSTRAP_SERVERS \
   --application-id $TOKEN-daily-holders \
   --config-file $CONFIG_FILE \
-  --input-topics nearin.receipts_outcomes_actions \
+  --input-topics $TOKEN_TRANSFER_TOPIC \
   --to-earliest --force
 
-
+### avro consumer
+```
 ./kafka-avro-console-consumer \
   --topic nearin.oct_balance \
   --from-beginning \
@@ -271,7 +280,6 @@ export CONFIG_FILE="/Users/deallinker-ry/Documents/github/octopus-network/nearin
   --property schema.registry.url=https://psrc-2225o.us-central1.gcp.confluent.cloud \
   --property basic.auth.credentials.source=USER_INFO \
   --property schema.registry.basic.auth.user.info='UGUW77JNIJZLCQMP:NmhDelI8DR3AoFeSX+0GijwBOgFy0MTfdAgGDMq+L+hKmXB3xQh0tIZhsHtMKV+2'
-
 ```
 
 # example message
