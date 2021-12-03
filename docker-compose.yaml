@@ -13,11 +13,11 @@ services:
       "network.octopus.nearin.ReceiptOutcomeAction"
     ]
     ports:
-      - 7071:7071
-      - 7072:7072
+      - 7001:7071
+      - 7002:7072
     volumes:
       - ./src/main/resources/config/dev.properties:/nearin/config.properties
-    restart: always
+    # restart: always
 
   token_transfer:
     image: nearin:0.0.1
@@ -32,11 +32,11 @@ services:
       "network.octopus.nearin.TokenTransfer"
     ]
     ports:
-      - 7071:7071
-      - 7072:7072
+      - 7011:7071
+      - 7012:7072
     volumes:
       - ./src/main/resources/config/dev.properties:/nearin/config.properties
-    restart: always
+    # restart: always
 
   token_balance:
     image: nearin:0.0.1
@@ -48,11 +48,11 @@ services:
       "-Xdebug", 
       "-cp", 
       "@/app/jib-classpath-file", 
-      "network.octopus.nearin.Balance"
+      "network.octopus.nearin.TokenBalance"
     ]
     ports:
-      - 7071:7071
-      - 7072:7072
+      - 7021:7071
+      - 7022:7072
     volumes:
       - ./src/main/resources/config/dev.properties:/nearin/config.properties
-    restart: always
+    # restart: always
