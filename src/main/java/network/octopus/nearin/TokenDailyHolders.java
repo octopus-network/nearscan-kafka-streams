@@ -85,7 +85,7 @@ public class TokenDailyHolders {
         .map((wk, value) -> KeyValue.pair(wk.key(),
             new near.indexer.daily_holders.Value(wk.key(), wk.window().end(), new BigDecimal(value))))
         .transform(() -> new CumulativeSumTransformer(), storeName)
-        .peek((k,v) -> logger.info("Daily balance: {} - {}", k, v))
+        .peek((key, value) -> logger.info("Daily balance: {} - {}", key, value))
         .to(tokenDailyHolderTopic, Produced.with(TOKEN_DAILY_HOLDERS.keySerde(), TOKEN_DAILY_HOLDERS.valueSerde()));
 
     return new KafkaStreams(builder.build(), props);

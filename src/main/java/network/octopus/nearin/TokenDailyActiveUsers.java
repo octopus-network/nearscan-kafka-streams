@@ -6,13 +6,12 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Duration;
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
@@ -20,6 +19,7 @@ import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.Suppressed;
 import org.apache.kafka.streams.kstream.TimeWindows;
@@ -39,7 +39,7 @@ public class TokenDailyActiveUsers {
     final Properties props = loadConfig(args[0]);
     props.put(StreamsConfig.APPLICATION_ID_CONFIG, props.getProperty("token.name") + "-daily-activate-users");
     props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
-    props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, SpecificAvroSerde.class);
+    props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
     // props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
  
     Schemas.configureSerdes(props);
@@ -69,21 +69,23 @@ public class TokenDailyActiveUsers {
     tokenTransfer.peek((k, v) -> logger.debug("transfer: {} --> {} [{}] {}", v.getTransferFrom(), v.getTransferTo(), v.getAffectedReason(), v.getAffectedAmount()));
 
     // filter -> groupby -> windowed -> aggregate -> tostream -> map(key)
-    // final KStream<Long, Long> dailyActiveUsers = receiptOutcomeAction
     tokenTransfer
         .filter((key, value) -> TRANSFER_ACTIONS.contains(value.getAffectedReason()))
         .map((key, value) -> KeyValue.pair(DAILY_ACTIVE_USERS, value.getAffectedAccount()))
         .groupByKey()
         .windowedBy(TimeWindows.ofSizeAndGrace(Duration.ofDays(1), Duration.ofMinutes(10)))
         // .windowedBy(new DailyTimeWindows(ZoneOffset.UTC, 0, Duration.ofMinutes(10L)))
-        .aggregate(HashSet::new, (aggKey, newValue, aggValue) -> {
-          aggValue.add(newValue);
+        .aggregate(ArrayList::new, (aggKey, newValue, aggValue) -> {
+          if (!aggValue.contains(newValue)) {
+            aggValue.add(newValue);
+          }
           return aggValue;
-        })
+        }, Materialized.with(Serdes.String(), Serdes.ListSerde(ArrayList.class, Serdes.String())))
         .suppress(Suppressed.untilWindowCloses(Suppressed.BufferConfig.unbounded()))
-        // .mapValues(value -> value.size());
         .toStream()
+        // .peek((key, value) -> logger.debug("{} : {}", key, value))
         .map((wk, value) -> KeyValue.pair(wk.key(), new near.indexer.daily_activate_users.Value(wk.window().end(), value.size())))
+        .peek((key, value) -> logger.info("Daily activate users: {} - {}", key, value))
         .to(tokenDailyActiveUsersTopic,
             Produced.with(TOKEN_DAILY_ACTIVATE_USERS.keySerde(), TOKEN_DAILY_ACTIVATE_USERS.valueSerde()));
 

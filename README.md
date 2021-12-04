@@ -370,6 +370,17 @@ https://docs.confluent.io/platform/current/connect/transforms/flatten.html
 https://explorer.near.org/transactions/J5WkksohcogJrMRiv8DwPdLwPvbuBmyt6kLshGFgeHM1#5nRWzPvYASSTboUzySRswnsDH5mdGoZBCVn75RwQjXtA
 ### success
 https://explorer.near.org/transactions/8QZbthy9aNa472GKxRAsZDLxe9ptwD9avfxWFutGB9QQ#E5r1GVMHULwwjGNoLGtwhPdTuPct6PYZX5WfUx8CQc1A
+```
+lamm.near
+laz.near
+qwr.near
+jingjinhuang2.near
+huyhuyk29.near
+qtt.near
+uyen.near
+```
+
+####   
 
 
 ###
