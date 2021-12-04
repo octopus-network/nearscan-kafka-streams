@@ -362,3 +362,34 @@ rules:
 }
 
 https://docs.confluent.io/platform/current/connect/transforms/flatten.html
+
+
+###
+create table receipts_outcomes_actions as
+select
+	r.receipt_id,
+	r.included_in_block_hash,
+	r.included_in_chunk_hash,
+	r.index_in_chunk,
+	r.included_in_block_timestamp,
+	r.predecessor_account_id,
+	r.receiver_account_id,
+	r.receipt_kind,
+	r.originated_from_transaction_hash,
+	--eo.executed_in_block_hash,
+	--eo.executed_in_block_timestamp,
+	--eo.index_in_chunk,
+	eo.gas_burnt,
+	eo.tokens_burnt,
+	eo.executor_account_id,
+	eo.status,
+	eo.shard_id,
+	ara.index_in_action_receipt,
+	ara.action_kind,
+	ara.args
+from
+	receipts r
+join execution_outcomes eo on
+	eo.receipt_id = r.receipt_id
+join action_receipt_actions ara on
+	ara.receipt_id = r.receipt_id

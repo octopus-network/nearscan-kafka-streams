@@ -128,3 +128,31 @@ docker run -it --rm -p 7071:7071 -p 7072:7072 \
 java -javaagent:/nearin/jmx_prometheus_javaagent-0.16.1.jar=7071:/nearin/streams-config.yml -javaagent:/nearin/jolokia-jvm-1.7.1.jar=port=7072,host=* -Xdebug -cp @/app/jib-classpath-file network.octopus.nearin.TokenTransfer /nearin/config.properties
 
 java -javaagent:/nearin/jmx_prometheus_javaagent-0.16.1.jar=7071:/nearin/streams-config.yml -javaagent:/nearin/jolokia-jvm-1.7.1.jar=port=7072,host=* -Xdebug -cp @/app/jib-classpath-file network.octopus.nearin.TokenBalance /nearin/config.properties
+
+
+# sink
+```
+CREATE TABLE nearin.oct_transfer (
+  receipt_id text NOT NULL,
+  included_in_block_hash text NOT NULL,
+  included_in_chunk_hash text NOT NULL,
+  index_in_chunk int4 NOT NULL,
+  included_in_block_timestamp numeric(20) NOT NULL,
+  predecessor_account_id text NOT NULL,
+  receiver_account_id text NOT NULL,
+  originated_from_transaction_hash text NOT NULL,
+  gas_burnt numeric(20) NOT NULL,
+  tokens_burnt numeric(45) NOT NULL,
+  executor_account_id text NOT NULL,
+  status text NOT NULL, -- enum
+  shard_id numeric(20) NOT NULL,
+  index_in_action_receipt int4 NOT NULL,
+  action_kind text NOT NULL, -- enum
+  args text NOT NULL, -- jsonb
+  affected_account text NOT NULL,
+  affected_amount numeric(45) NOT NULL,
+  affected_reason text NOT NULL,
+  transfer_from text NOT NULL,
+  transfer_to text NOT NULL
+);
+```

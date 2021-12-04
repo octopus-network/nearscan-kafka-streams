@@ -37,7 +37,7 @@ import static network.octopus.nearin.util.Schemas.Topics.ACTION_RECEIPT_ACTIONS;
 import static network.octopus.nearin.util.Schemas.Topics.RECEIPTS_OUTCOMES_ACTIONS;
 
 public class ReceiptOutcomeAction {
-  
+
   private static final Logger logger = LoggerFactory.getLogger(ReceiptOutcomeAction.class);
   private static final String storeName = "nearin-debezium-store";
 
@@ -47,7 +47,7 @@ public class ReceiptOutcomeAction {
     props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
     props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, SpecificAvroSerde.class);
     // props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
- 
+
     Schemas.configureSerdes(props);
 
     final KafkaStreams streams = buildKafkaStreams(props);
@@ -67,7 +67,7 @@ public class ReceiptOutcomeAction {
     final String executionOutcomesTopic = props.getProperty("execution_outcomes.topic.name");
     final String actionReceiptActionsTopic = props.getProperty("action_receipt_actions.topic.name");
     final String receiptsOutcomesActionsTopic = props.getProperty("receipts_outcomes_actions.topic.name");
-    
+
     final Duration windowSize = Duration.ofMinutes(30);
     final Duration retentionPeriod = Duration.ofMinutes(30);
 
@@ -80,35 +80,35 @@ public class ReceiptOutcomeAction {
 
     final KStream<String, near.indexer.receipts.Value> receipts = builder
         .stream(receiptTopic,
-            Consumed.with(RECEIPTS.keySerde(), RECEIPTS.valueSerde())
-                .withTimestampExtractor(RECEIPTS.timestampExtractor()))
+            Consumed.with(RECEIPTS.keySerde(), RECEIPTS.valueSerde()))
+                // .withTimestampExtractor(RECEIPTS.timestampExtractor()))
         .transform(() -> new DeduplicationTransformer<>(windowSize.toMillis(),
             (key, value) -> "receipts-"+value.getReceiptId()), storeName);
     // receipts.peek((k, v) -> logger.debug("receipts: {} {}", k, v));
 
     final KStream<String, near.indexer.execution_outcomes.Value> outcomes = builder
         .stream(executionOutcomesTopic,
-            Consumed.with(EXECUTION_OUTCOMES.keySerde(), EXECUTION_OUTCOMES.valueSerde())
-                .withTimestampExtractor(EXECUTION_OUTCOMES.timestampExtractor()))
+            Consumed.with(EXECUTION_OUTCOMES.keySerde(), EXECUTION_OUTCOMES.valueSerde()))
+                // .withTimestampExtractor(EXECUTION_OUTCOMES.timestampExtractor()))
         .transform(() -> new DeduplicationTransformer<>(windowSize.toMillis(),
             (key, value) -> "execution_outcomes-"+value.getReceiptId()), storeName);
     // outcomes.peek((k, v) -> logger.debug("outcomes: {} {}", k, v));
 
     final KStream<String, near.indexer.action_receipt_actions.Value> actions = builder
         .stream(actionReceiptActionsTopic,
-            Consumed.with(ACTION_RECEIPT_ACTIONS.keySerde(), ACTION_RECEIPT_ACTIONS.valueSerde())
-                .withTimestampExtractor(ACTION_RECEIPT_ACTIONS.timestampExtractor()))
+            Consumed.with(ACTION_RECEIPT_ACTIONS.keySerde(), ACTION_RECEIPT_ACTIONS.valueSerde()))
+                // .withTimestampExtractor(ACTION_RECEIPT_ACTIONS.timestampExtractor()))
         .transform(() -> new DeduplicationTransformer<>(windowSize.toMillis(),
             (key, value) -> "action_receipt_actions-"+value.getReceiptId()+"_"+value.getIndexInActionReceipt()), storeName);
     // actions.peek((k, v) -> logger.debug("actions: {} {}", k, v));
 
     final KStream<String, near.indexer.receipts_outcomes_actions.Value> receiptOutcomeAction = receipts
         .join(outcomes, (receipt, outcome) -> new near.indexer.receipts_outcomes_actions.Value(receipt, outcome, null),
-            JoinWindows.of(Duration.ofMillis(20000)))
+            JoinWindows.of(Duration.ofMinutes(60)))
         .join(actions,
             (receiptOutcome, action) -> new near.indexer.receipts_outcomes_actions.Value(receiptOutcome.getReceipt(),
                 receiptOutcome.getOutcome(), action),
-            JoinWindows.of(Duration.ofMillis(20000)));
+            JoinWindows.of(Duration.ofMinutes(60)));
       // .filter((key, value) -> !value.getOutcome().getStatus().equals("FAILURE") && value.getAction().getActionKind().equals("FUNCTION_CALL"))
       // .peek((k, v) -> logger.debug("[2] filter {} --> {}", k, v));
 
@@ -126,7 +126,7 @@ public class ReceiptOutcomeAction {
         latch.countDown();
       }
     });
-    
+
     streams.start();
 
     try {
