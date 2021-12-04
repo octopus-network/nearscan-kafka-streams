@@ -211,7 +211,7 @@ cd /Users/deallinker-ry/Desktop/ni/nearin ; /usr/bin/env /Library/Java/JavaVirtu
 # reset
 ```
 export TOKEN="octopus"
-export TOKEN_TRANSFER_TOPIC="nearin.oct-transfer"
+export TOKEN_TRANSFER_TOPIC="nearin.oct_transfer"
 export BOOTSTRAP_SERVERS="pkc-4yyd6.us-east1.gcp.confluent.cloud:9092"    # dev
 export CONFIG_FILE="/Users/deallinker-ry/Documents/github/octopus-network/nearin/src/main/resources/config/dev-ccloud.properties"
 
@@ -362,6 +362,14 @@ rules:
 }
 
 https://docs.confluent.io/platform/current/connect/transforms/flatten.html
+
+
+# ft_resolve_transfer
+## action_receipt_output_data
+### failed
+https://explorer.near.org/transactions/J5WkksohcogJrMRiv8DwPdLwPvbuBmyt6kLshGFgeHM1#5nRWzPvYASSTboUzySRswnsDH5mdGoZBCVn75RwQjXtA
+### success
+https://explorer.near.org/transactions/8QZbthy9aNa472GKxRAsZDLxe9ptwD9avfxWFutGB9QQ#E5r1GVMHULwwjGNoLGtwhPdTuPct6PYZX5WfUx8CQc1A
 
 
 ###

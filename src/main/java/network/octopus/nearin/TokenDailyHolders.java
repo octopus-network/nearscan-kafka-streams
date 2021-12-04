@@ -11,7 +11,6 @@ import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
@@ -19,7 +18,6 @@ import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.KeyValueMapper;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.Suppressed;
 import org.apache.kafka.streams.kstream.TimeWindows;
@@ -43,7 +41,7 @@ public class TokenDailyHolders {
     final Properties props = loadConfig(args[0]);
     props.put(StreamsConfig.APPLICATION_ID_CONFIG, props.getProperty("token.name") + "-daily-holders");
     props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
-    props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, SpecificAvroSerde.class);
+    props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
     // props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
  
     Schemas.configureSerdes(props);
@@ -66,10 +64,10 @@ public class TokenDailyHolders {
 
     final StreamsBuilder builder = new StreamsBuilder();
 
-    final StoreBuilder<KeyValueStore<String, near.indexer.daily_holders.Value>> dedupStoreBuilder = Stores
+    final StoreBuilder<KeyValueStore<String, near.indexer.daily_holders.Value>> cumsumStoreBuilder = Stores
         .keyValueStoreBuilder(Stores.persistentKeyValueStore(storeName), 
-            Serdes.String(), TOKEN_DAILY_HOLDERS.valueSerde());
-    builder.addStateStore(dedupStoreBuilder);
+            Serdes.String(), TOKEN_DAILY_HOLDERS.valueSerde()); // .withLoggingEnabled(new HashMap<>());
+    builder.addStateStore(cumsumStoreBuilder);
 
     final KStream<String, near.indexer.token_transfer.Value> tokenTransfer = builder
     .stream(tokenTransferTopic,
@@ -80,11 +78,14 @@ public class TokenDailyHolders {
     tokenTransfer
         .groupByKey()
         .windowedBy(TimeWindows.ofSizeAndGrace(Duration.ofDays(1), Duration.ofMinutes(10)))
-        .aggregate(() -> new BigDecimal(0L), (aggKey, newValue, aggValue) -> aggValue.add(newValue.getAffectedAmount()))
+        .aggregate(() -> "0",
+            (aggKey, newValue, aggValue) -> (newValue.getAffectedAmount().add(new BigDecimal(aggValue))).toString())
         .suppress(Suppressed.untilWindowCloses(Suppressed.BufferConfig.unbounded()))
         .toStream()
-        .map((wk, value) -> KeyValue.pair(wk.key(), new near.indexer.daily_holders.Value(wk.key(), wk.window().end(), value)))
-        .transform(() -> new CumulativeSumTransformer<>((key, value) -> value.getAmount()), storeName)
+        .map((wk, value) -> KeyValue.pair(wk.key(),
+            new near.indexer.daily_holders.Value(wk.key(), wk.window().end(), new BigDecimal(value))))
+        .transform(() -> new CumulativeSumTransformer(), storeName)
+        .peek((k,v) -> logger.info("Daily balance: {} - {}", k, v))
         .to(tokenDailyHolderTopic, Produced.with(TOKEN_DAILY_HOLDERS.keySerde(), TOKEN_DAILY_HOLDERS.valueSerde()));
 
     return new KafkaStreams(builder.build(), props);
@@ -121,30 +122,32 @@ public class TokenDailyHolders {
   }
 
   // Cumulative Sum
-  private static class CumulativeSumTransformer<K, V> implements Transformer<K, V, KeyValue<K, V>> {
-    private KeyValueStore<K, V> store;
-    private final KeyValueMapper<K, V, BigDecimal> extractor;
-
-    CumulativeSumTransformer(final KeyValueMapper<K, V, BigDecimal> extractor) {
-      this.extractor = extractor;
-    }
+  private static class CumulativeSumTransformer implements Transformer<String, near.indexer.daily_holders.Value, KeyValue<String, near.indexer.daily_holders.Value>> {
+    private KeyValueStore<String, near.indexer.daily_holders.Value> store;
 
     @Override
     public void init(final ProcessorContext context) {
       store = context.getStateStore(storeName);
     }
 
-    public KeyValue<K, V> transform(final K key, final V value) {
-      final V prev = store.get(key);
+    public KeyValue<String, near.indexer.daily_holders.Value> transform(final String key, final near.indexer.daily_holders.Value value) {
+      final near.indexer.daily_holders.Value prev = store.get(key);
       if (prev == null) {
+        if (value.getAmount().compareTo(new BigDecimal(0L)) < 0) {
+          logger.error("[EE] Negative balance : {} - {}", key, value.getAmount());
+        }
         store.put(key, value);
         return KeyValue.pair(key, value);
       } else {
-        final BigDecimal cumsum = extractor.apply(key, prev).add(extractor.apply(key, value));
+        final BigDecimal cumsum = prev.getAmount().add(value.getAmount());
         if (cumsum.compareTo(new BigDecimal(0L)) > 0) {
-          store.put(key, value);
-          return KeyValue.pair(key, value);
+          final near.indexer.daily_holders.Value post = new near.indexer.daily_holders.Value(value.getAccount(), value.getTimestamp(), cumsum);
+          store.put(key, post);
+          return KeyValue.pair(key, post);
         } else {
+          if (cumsum.compareTo(new BigDecimal(0L)) < 0) {
+            logger.error("[EE] Negative balance : {} - {} - {}", key, cumsum, value);
+          }
           store.delete(key);
           return null;
         }
