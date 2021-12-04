@@ -102,7 +102,7 @@ public class TokenBalance {
             }, Materialized.with(TOKEN_BALANCE.keySerde(), TOKEN_BALANCE.valueSerde()));
 
     tokenBalance.toStream()
-        .peek((k, v) -> logger.debug("token balance: {} --> {} ", k, v))
+        .peek((k, v) -> logger.info("token balance: {} --> {} ", k, v))
         .to(tokenBalanceTopic, Produced.with(TOKEN_BALANCE.keySerde(), TOKEN_BALANCE.valueSerde()));
 
     return new KafkaStreams(builder.build(), props);

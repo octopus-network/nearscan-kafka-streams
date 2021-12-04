@@ -63,7 +63,7 @@ public class Schemas {
         } else {
           final BigDecimal nanoseconds = this.timestampExtract.apply((V)(record.value()));
           final long milliseconds = nanoseconds.divide(new BigDecimal(1e6), RoundingMode.HALF_UP).longValue();
-          logger.info("nanoseconds: {} --> milliseconds: {} [{}]", nanoseconds, milliseconds, this.name);
+          logger.debug("nanoseconds: {} --> milliseconds: {} [{}]", nanoseconds, milliseconds, this.name);
           return milliseconds;
         }
       };

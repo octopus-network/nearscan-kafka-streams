@@ -80,37 +80,40 @@ public class ReceiptOutcomeAction {
 
     final KStream<String, near.indexer.receipts.Value> receipts = builder
         .stream(receiptTopic,
-            Consumed.with(RECEIPTS.keySerde(), RECEIPTS.valueSerde()))
+            Consumed.with(RECEIPTS.keySerde(), RECEIPTS.valueSerde())
+                .withTimestampExtractor(RECEIPTS.timestampExtractor()))
         .transform(() -> new DeduplicationTransformer<>(windowSize.toMillis(),
             (key, value) -> "receipts-"+value.getReceiptId()), storeName);
     // receipts.peek((k, v) -> logger.debug("receipts: {} {}", k, v));
 
     final KStream<String, near.indexer.execution_outcomes.Value> outcomes = builder
         .stream(executionOutcomesTopic,
-            Consumed.with(EXECUTION_OUTCOMES.keySerde(), EXECUTION_OUTCOMES.valueSerde()))
+            Consumed.with(EXECUTION_OUTCOMES.keySerde(), EXECUTION_OUTCOMES.valueSerde())
+                .withTimestampExtractor(EXECUTION_OUTCOMES.timestampExtractor()))
         .transform(() -> new DeduplicationTransformer<>(windowSize.toMillis(),
             (key, value) -> "execution_outcomes-"+value.getReceiptId()), storeName);
     // outcomes.peek((k, v) -> logger.debug("outcomes: {} {}", k, v));
 
     final KStream<String, near.indexer.action_receipt_actions.Value> actions = builder
         .stream(actionReceiptActionsTopic,
-            Consumed.with(ACTION_RECEIPT_ACTIONS.keySerde(), ACTION_RECEIPT_ACTIONS.valueSerde()))
+            Consumed.with(ACTION_RECEIPT_ACTIONS.keySerde(), ACTION_RECEIPT_ACTIONS.valueSerde())
+                .withTimestampExtractor(ACTION_RECEIPT_ACTIONS.timestampExtractor()))
         .transform(() -> new DeduplicationTransformer<>(windowSize.toMillis(),
             (key, value) -> "action_receipt_actions-"+value.getReceiptId()+"_"+value.getIndexInActionReceipt()), storeName);
     // actions.peek((k, v) -> logger.debug("actions: {} {}", k, v));
 
     final KStream<String, near.indexer.receipts_outcomes_actions.Value> receiptOutcomeAction = receipts
         .join(outcomes, (receipt, outcome) -> new near.indexer.receipts_outcomes_actions.Value(receipt, outcome, null),
-            JoinWindows.of(Duration.ofMillis(2000)))
+            JoinWindows.of(Duration.ofMillis(20000)))
         .join(actions,
             (receiptOutcome, action) -> new near.indexer.receipts_outcomes_actions.Value(receiptOutcome.getReceipt(),
                 receiptOutcome.getOutcome(), action),
-            JoinWindows.of(Duration.ofMillis(2000)));
+            JoinWindows.of(Duration.ofMillis(20000)));
       // .filter((key, value) -> !value.getOutcome().getStatus().equals("FAILURE") && value.getAction().getActionKind().equals("FUNCTION_CALL"))
       // .peek((k, v) -> logger.debug("[2] filter {} --> {}", k, v));
 
     receiptOutcomeAction
-        .peek((k, v) -> logger.debug("receipt-outcome-action {} --> {} {}", k, v.getOutcome().getStatus(), v.getAction().getActionKind()))
+        .peek((k, v) -> logger.info("receipt-outcome-action {} --> {} {}", k, v.getOutcome().getStatus(), v.getAction().getActionKind()))
         .to(receiptsOutcomesActionsTopic, Produced.with(RECEIPTS_OUTCOMES_ACTIONS.keySerde(), RECEIPTS_OUTCOMES_ACTIONS.valueSerde()));
 
     return new KafkaStreams(builder.build(), props);

@@ -271,7 +271,7 @@ public class TokenTransfer {
         });
 
         tokenTransfer
-            .peek((k, v) -> logger.debug("transfer: {} --> {} [{}] {}", v.getTransferFrom(), v.getTransferTo(), v.getAffectedReason(), v.getAffectedAmount()))
+            .peek((k, v) -> logger.info("transfer: {} --> {} [{}] {}", v.getTransferFrom(), v.getTransferTo(), v.getAffectedReason(), v.getAffectedAmount()))
             // .map((key, value) -> KeyValue.pair(value.getAffectedAccount(), value)) // <account, transfer>
             .to(tokenTransferTopic, Produced.with(TOKEN_TRANSFER.keySerde(), TOKEN_TRANSFER.valueSerde()));
 
