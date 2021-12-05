@@ -3,17 +3,12 @@ package network.octopus.nearin;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
-import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -25,6 +20,7 @@ import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.Suppressed;
 import org.apache.kafka.streams.kstream.TimeWindows;
@@ -79,12 +75,29 @@ public class TokenDailyTransferTopK {
         .map((key, value) -> KeyValue.pair(DAILY_TRANSFER_TOPK, value))
         .groupByKey()
         .windowedBy(TimeWindows.ofSizeAndGrace(Duration.ofDays(1), Duration.ofMinutes(10)))
-        .aggregate(TopKTransfers::new, (aggKey, newValue, aggValue) -> {
+        .aggregate(ArrayList::new, (aggKey, newValue, aggValue) -> {
           aggValue.add(newValue);
+          // amount desc -> account asc -> timestamp asc
+          aggValue.sort((e1, e2) -> {
+            final int c1 = e2.getAffectedAmount().abs().compareTo(e1.getAffectedAmount().abs());
+            if (c1 != 0) {
+              return c1;
+            }
+            final int c2 = e1.getAffectedAccount().compareTo(e2.getAffectedAccount());
+            if (c2 != 0) {
+              return c2;
+            }
+            final int c3 = e1.getIncludedInBlockTimestamp().compareTo(e2.getIncludedInBlockTimestamp());
+            return c3;
+          });
+          if (aggValue.size() > DAILY_TRANSFER_TOPK_COUNT) {
+            aggValue.remove(aggValue.size() - 1);
+          }
           return aggValue;
-        })
+        }, Materialized.with(Serdes.String(), Serdes.ListSerde(ArrayList.class, TOKEN_TRANSFER.valueSerde())))
         .suppress(Suppressed.untilTimeLimit(Duration.ofMinutes(10), Suppressed.BufferConfig.unbounded()))
         .toStream()
+        // .peek((key, value) -> logger.debug("{} : {}", key, value))
         .flatMap((wk, value) -> {
           final List<KeyValue<String, near.indexer.daily_transfer_topk.Value>> result = new ArrayList<>();
           int index = 0;
@@ -94,6 +107,7 @@ public class TokenDailyTransferTopK {
           }
           return result;
         })
+        .peek((key, value) -> logger.info("Daily transfer topk: {} - {}", key, value))
         .to(tokenDailyTransferTopKTopic,
             Produced.with(TOKEN_DAILY_TRANSFER_TOPK.keySerde(), TOKEN_DAILY_TRANSFER_TOPK.valueSerde()));
 
@@ -130,49 +144,4 @@ public class TokenDailyTransferTopK {
     return props;
   }
 
-  // top k 10
-  static class TopKTransfers implements Iterable<near.indexer.token_transfer.Value> {
-    private final Map<String, near.indexer.token_transfer.Value> current = new HashMap<>();
-    private final TreeSet<near.indexer.token_transfer.Value> topK = new TreeSet<>((e1, e2) -> {
-      final BigDecimal amount1 = e1.getAffectedAmount().abs();
-      final BigDecimal amount2 = e2.getAffectedAmount().abs();
-
-      final int result = amount2.compareTo(amount1);
-      if (result != 0) {
-        return result;
-      }
-      final String account1 = e1.getAffectedAccount();
-      final String account2 = e2.getAffectedAccount();
-      return account1.compareTo(account2);
-    });
-
-    @Override
-    public String toString() {
-      return current.toString();
-    }
-
-    public void add(final near.indexer.token_transfer.Value transfer) {
-      if(current.containsKey(transfer.getAffectedAccount())) {
-        topK.remove(current.remove(transfer.getAffectedAccount()));
-      }
-      topK.add(transfer);
-      current.put(transfer.getAffectedAccount(), transfer);
-      if (topK.size() > DAILY_TRANSFER_TOPK_COUNT) {
-        final near.indexer.token_transfer.Value last = topK.last();
-        current.remove(last.getAffectedAccount());
-        topK.remove(last);
-      }
-    }
-
-    void remove(final near.indexer.token_transfer.Value value) {
-      topK.remove(value);
-      current.remove(value.getAffectedAccount());
-    }
-
-    @Override
-    public Iterator<near.indexer.token_transfer.Value> iterator() {
-      return topK.iterator();
-    }
-  }
-  
 }

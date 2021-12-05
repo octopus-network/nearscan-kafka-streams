@@ -134,7 +134,7 @@ public class TokenDailyHolders {
       final near.indexer.daily_holders.Value prev = store.get(key);
       if (prev == null) {
         if (value.getAmount().compareTo(new BigDecimal(0L)) < 0) {
-          logger.error("[EE] Negative balance : {} - {}", key, value.getAmount());
+          logger.error("[EE] Negative balance: {} - {}", key, value.getAmount());
         }
         store.put(key, value);
         return KeyValue.pair(key, value);
@@ -146,7 +146,7 @@ public class TokenDailyHolders {
           return KeyValue.pair(key, post);
         } else {
           if (cumsum.compareTo(new BigDecimal(0L)) < 0) {
-            logger.error("[EE] Negative balance : {} - {} - {}", key, cumsum, value);
+            logger.error("[EE] Negative balance: {} - {} - {}", key, cumsum, value);
           }
           store.delete(key);
           return null;
