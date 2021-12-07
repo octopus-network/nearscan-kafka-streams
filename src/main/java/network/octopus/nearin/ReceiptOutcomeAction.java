@@ -217,7 +217,7 @@ public class ReceiptOutcomeAction {
   // org.apache.kafka.common.errors.RecordTooLargeException
   // The message is 1850981 bytes when serialized which is larger than 1048576, 
   // which is the value of the max.request.size configuration.
-  private static class StreamsRecordProducerErrorHandler implements ProductionExceptionHandler {
+  public static class StreamsRecordProducerErrorHandler implements ProductionExceptionHandler {
     @Override
     public ProductionExceptionHandlerResponse handle(final ProducerRecord<byte[], byte[]> record, final Exception exception) {
       if (exception instanceof RecordTooLargeException) {
