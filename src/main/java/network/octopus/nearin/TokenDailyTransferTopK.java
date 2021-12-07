@@ -75,7 +75,7 @@ public class TokenDailyTransferTopK {
         .map((key, value) -> KeyValue.pair(DAILY_TRANSFER_TOPK, value))
         .groupByKey()
         .windowedBy(TimeWindows.ofSizeAndGrace(Duration.ofDays(1), Duration.ofMinutes(10)))
-        .aggregate(ArrayList::new, (aggKey, newValue, aggValue) -> {
+        .aggregate(ArrayList<near.indexer.token_transfer.Value>::new, (aggKey, newValue, aggValue) -> {
           aggValue.add(newValue);
           // amount desc -> account asc -> timestamp asc
           aggValue.sort((e1, e2) -> {

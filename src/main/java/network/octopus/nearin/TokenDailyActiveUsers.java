@@ -75,7 +75,7 @@ public class TokenDailyActiveUsers {
         .groupByKey()
         .windowedBy(TimeWindows.ofSizeAndGrace(Duration.ofDays(1), Duration.ofMinutes(10)))
         // .windowedBy(new DailyTimeWindows(ZoneOffset.UTC, 0, Duration.ofMinutes(10L)))
-        .aggregate(ArrayList::new, (aggKey, newValue, aggValue) -> {
+        .aggregate(ArrayList<String>::new, (aggKey, newValue, aggValue) -> {
           if (!aggValue.contains(newValue)) {
             aggValue.add(newValue);
           }
