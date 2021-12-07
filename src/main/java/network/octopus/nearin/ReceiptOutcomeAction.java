@@ -6,16 +6,20 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import io.confluent.kafka.streams.serdes.avro.SpecificAvroSerde;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.errors.RecordTooLargeException;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.errors.ProductionExceptionHandler;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.JoinWindows;
 import org.apache.kafka.streams.kstream.KStream;
@@ -47,6 +51,7 @@ public class ReceiptOutcomeAction {
     props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
     props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, SpecificAvroSerde.class);
     // props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    props.put(StreamsConfig.DEFAULT_PRODUCTION_EXCEPTION_HANDLER_CLASS_CONFIG, StreamsRecordProducerErrorHandler.class);
 
     Schemas.configureSerdes(props);
 
@@ -151,7 +156,6 @@ public class ReceiptOutcomeAction {
 
   // !!! debezium at least once
   private static class DeduplicationTransformer<K, V, E> implements Transformer<K, V, KeyValue<K, V>> {
-
     private ProcessorContext context;
     private WindowStore<E, Long> eventIdStore;
     private final long leftDurationMs;
@@ -207,6 +211,23 @@ public class ReceiptOutcomeAction {
 
     @Override
     public void close() {
+    }
+  }
+
+  // org.apache.kafka.common.errors.RecordTooLargeException
+  // The message is 1850981 bytes when serialized which is larger than 1048576, 
+  // which is the value of the max.request.size configuration.
+  private static class StreamsRecordProducerErrorHandler implements ProductionExceptionHandler {
+    @Override
+    public ProductionExceptionHandlerResponse handle(ProducerRecord<byte[], byte[]> record, Exception exception) {
+      if (exception instanceof RecordTooLargeException) {
+        return ProductionExceptionHandlerResponse.CONTINUE;
+      }
+      return ProductionExceptionHandlerResponse.FAIL;
+    }
+
+    @Override
+    public void configure(Map<String, ?> configs) {
     }
   }
 
