@@ -23,6 +23,7 @@ import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.Suppressed;
 import org.apache.kafka.streams.kstream.TimeWindows;
+import org.apache.kafka.streams.kstream.Windowed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +70,7 @@ public class TokenDailyActiveUsers {
     tokenTransfer.peek((k, v) -> logger.debug("transfer: {} --> {} [{}] {}", v.getTransferFrom(), v.getTransferTo(), v.getAffectedReason(), v.getAffectedAmount()));
 
     // filter -> groupby -> windowed -> aggregate -> tostream -> map(key)
-    tokenTransfer
+    final KStream<Windowed<String>, List<String>> dailyActivateUsers = tokenTransfer
         .filter((key, value) -> TRANSFER_ACTIONS.contains(value.getAffectedReason()))
         .map((key, value) -> KeyValue.pair(DAILY_ACTIVE_USERS, value.getAffectedAccount()))
         .groupByKey()
@@ -82,7 +83,9 @@ public class TokenDailyActiveUsers {
           return aggValue;
         }, Materialized.with(Serdes.String(), Serdes.ListSerde(ArrayList.class, Serdes.String())))
         .suppress(Suppressed.untilWindowCloses(Suppressed.BufferConfig.unbounded()))
-        .toStream()
+        .toStream();
+
+    dailyActivateUsers
         // .peek((key, value) -> logger.debug("{} : {}", key, value))
         .map((wk, value) -> KeyValue.pair(wk.key(), new near.indexer.daily_activate_users.Value(wk.window().end(), value.size())))
         .peek((key, value) -> logger.info("Daily activate users: {} - {}", key, value))

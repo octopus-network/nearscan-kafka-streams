@@ -24,6 +24,7 @@ import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.kstream.Suppressed;
 import org.apache.kafka.streams.kstream.TimeWindows;
+import org.apache.kafka.streams.kstream.Windowed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +71,7 @@ public class TokenDailyTransferTopK {
                 .withTimestampExtractor(TOKEN_TRANSFER.timestampExtractor())); // extrect timestamp in nanoseconds
     tokenTransfer.peek((k, v) -> logger.debug("transfer: {} --> {} [{}] {}", v.getTransferFrom(), v.getTransferTo(), v.getAffectedReason(), v.getAffectedAmount()));
 
-    tokenTransfer
+    final KStream<Windowed<String>, List<near.indexer.token_transfer.Value>> dailyTransferTopk = tokenTransfer
         .filter((key, value) -> TRANSFER_ACTIONS.contains(value.getAffectedReason()))
         .map((key, value) -> KeyValue.pair(DAILY_TRANSFER_TOPK, value))
         .groupByKey()
@@ -96,7 +97,9 @@ public class TokenDailyTransferTopK {
           return aggValue;
         }, Materialized.with(Serdes.String(), Serdes.ListSerde(ArrayList.class, TOKEN_TRANSFER.valueSerde())))
         .suppress(Suppressed.untilTimeLimit(Duration.ofMinutes(10), Suppressed.BufferConfig.unbounded()))
-        .toStream()
+        .toStream();
+
+    dailyTransferTopk
         // .peek((key, value) -> logger.debug("{} : {}", key, value))
         .flatMap((wk, value) -> {
           final List<KeyValue<String, near.indexer.daily_transfer_topk.Value>> result = new ArrayList<>();

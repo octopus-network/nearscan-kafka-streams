@@ -219,7 +219,7 @@ public class ReceiptOutcomeAction {
   // which is the value of the max.request.size configuration.
   private static class StreamsRecordProducerErrorHandler implements ProductionExceptionHandler {
     @Override
-    public ProductionExceptionHandlerResponse handle(ProducerRecord<byte[], byte[]> record, Exception exception) {
+    public ProductionExceptionHandlerResponse handle(final ProducerRecord<byte[], byte[]> record, final Exception exception) {
       if (exception instanceof RecordTooLargeException) {
         return ProductionExceptionHandlerResponse.CONTINUE;
       }
@@ -227,7 +227,7 @@ public class ReceiptOutcomeAction {
     }
 
     @Override
-    public void configure(Map<String, ?> configs) {
+    public void configure(final Map<String, ?> configs) {
     }
   }
 
