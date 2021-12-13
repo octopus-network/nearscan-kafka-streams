@@ -1,0 +1,32 @@
+{
+  "connect.name": "near.indexer.data_receipts.Value",
+  "fields": [
+    {
+      "name": "data_id",
+      "type": "string"
+    },
+    {
+      "name": "receipt_id",
+      "type": "string"
+    },
+    {
+      "default": null,
+      "name": "data",
+      "type": [
+        "null",
+        "bytes"
+      ]
+    },
+    {
+      "default": null,
+      "name": "__deleted",
+      "type": [
+        "null",
+        "string"
+      ]
+    }
+  ],
+  "name": "Value",
+  "namespace": "near.indexer.data_receipts",
+  "type": "record"
+}

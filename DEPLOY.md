@@ -70,31 +70,76 @@ INSERT INTO indexer.heartbeat (id, ts) VALUES (1, NOW()) ON CONFLICT(id) DO UPDA
     "database.dbname": "db_testnet",
     "database.server.name": "near",
     "database.sslmode": "disable",
-    "table.include.list": "indexer.receipts, indexer.action_receipt_actions, indexer.execution_outcomes, indexer.heartbeat",
+    "table.include.list": "indexer.receipts, indexer.action_receipt_actions, indexer.execution_outcomes, indexer.data_receipts, indexer.action_receipt_input_data, indexer.action_receipt_output_data, indexer.heartbeat",
     "slot.name": "cdc_0",
     "heartbeat.interval.ms": "60000",
     "heartbeat.action.query": "INSERT INTO indexer.heartbeat (id, ts) VALUES (1, NOW()) ON CONFLICT(id) DO UPDATE SET ts=EXCLUDED.ts",
     "output.data.format": "AVRO",
     "tasks.max": "1",
-    "transforms": "ExtractReceiptID,ExtractExecutedReceiptID ",
-    "predicates": "IsReceipt,IsExecutedReceipt ",
+    "transforms": "ExtractReceiptID,ExtractDataID,ExtractInputDataID,ExtractOutputDataID ",
+    "predicates": "IsReceipt,IsData,IsInputData,IsOutputData ",
     "transforms.ExtractReceiptID.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
     "transforms.ExtractReceiptID.field": "receipt_id",
     "transforms.ExtractReceiptID.predicate": "IsReceipt",
-    "transforms.ExtractExecutedReceiptID.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
-    "transforms.ExtractExecutedReceiptID.field": "executed_receipt_id",
-    "transforms.ExtractExecutedReceiptID.predicate": "IsExecutedReceipt",
+    "transforms.ExtractDataID.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
+    "transforms.ExtractDataID.field": "data_id",
+    "transforms.ExtractDataID.predicate": "IsData",
+    "transforms.ExtractInputDataID.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
+    "transforms.ExtractInputDataID.field": "input_data_id",
+    "transforms.ExtractInputDataID.predicate": "IsInputData",
+    "transforms.ExtractOutputDataID.type": "org.apache.kafka.connect.transforms.ExtractField$Key",
+    "transforms.ExtractOutputDataID.field": "output_data_id",
+    "transforms.ExtractOutputDataID.predicate": "IsOutputData",
     "predicates.IsReceipt.type": "org.apache.kafka.connect.transforms.predicates.TopicNameMatches",
-    "predicates.IsReceipt.pattern": ".*receipt.*(?<!execution_outcome_receipts)$|.*execution_outcomes",
-    "predicates.IsExecutedReceipt.type": "org.apache.kafka.connect.transforms.predicates.TopicNameMatches",
-    "predicates.IsExecutedReceipt.pattern": ".*execution_outcome_receipts"
+    "predicates.IsReceipt.pattern": ".*indexer\\.receipts|.*indexer\\.execution_outcomes|.*indexer\\.action_receipt_actions",
+    "predicates.IsData.type": "org.apache.kafka.connect.transforms.predicates.TopicNameMatches",
+    "predicates.IsData.pattern": ".*indexer\\.data_receipts",
+    "predicates.IsInputData.type": "org.apache.kafka.connect.transforms.predicates.TopicNameMatches",
+    "predicates.IsInputData.pattern": ".*indexer\\.action_receipt_input_data",
+    "predicates.IsOutputData.type": "org.apache.kafka.connect.transforms.predicates.TopicNameMatches",
+    "predicates.IsOutputData.pattern": ".*indexer\\.action_receipt_output_data"
   }
 }
 
-dev 
+## dev 
 XWE3HSVOCTPTKZSN
 Z3jPle0D19hAKyOCPKzCxx+/9kP9dhypqkQGz/NZaznDcGkFYFQpi0eCrBDuZ5yy
 
+
+```
+transforms=ExtractReceiptID,ExtractDataID,ExtractInputDataID,ExtractOutputDataID
+
+transforms.ExtractReceiptID.type=org.apache.kafka.connect.transforms.ExtractField$Key
+transforms.ExtractReceiptID.field=receipt_id
+transforms.ExtractReceiptID.predicate=IsReceipt
+
+transforms.ExtractDataID.type=org.apache.kafka.connect.transforms.ExtractField$Key
+transforms.ExtractDataID.field=data_id
+transforms.ExtractDataID.predicate=IsData
+
+transforms.ExtractInputDataID.type=org.apache.kafka.connect.transforms.ExtractField$Key
+transforms.ExtractInputDataID.field=input_data_id
+transforms.ExtractInputDataID.predicate=IsInputData
+
+transforms.ExtractOutputDataID.type=org.apache.kafka.connect.transforms.ExtractField$Key
+transforms.ExtractOutputDataID.field=output_data_id
+transforms.ExtractOutputDataID.predicate=IsOutputData
+
+
+predicates=IsReceipt,IsData,IsInputData,IsOutputData
+
+predicates.IsReceipt.type=org.apache.kafka.connect.transforms.predicates.TopicNameMatches
+predicates.IsReceipt.pattern=.*indexer\.receipts|.*indexer\.execution_outcomes|.*indexer\.action_receipt_actions
+
+predicates.IsData.type=org.apache.kafka.connect.transforms.predicates.TopicNameMatches
+predicates.IsData.pattern=.*indexer\.data_receipts
+
+predicates.IsInputData.type=org.apache.kafka.connect.transforms.predicates.TopicNameMatches
+predicates.IsInputData.pattern=.*indexer\.action_receipt_input_data
+
+predicates.IsOutputData.type=org.apache.kafka.connect.transforms.predicates.TopicNameMatches
+predicates.IsOutputData.pattern=.*indexer\.action_receipt_output_data
+```
 
 
 # aws code
@@ -103,7 +148,7 @@ uS69V9gu/G7+DifW5F8XaGUsSnMqtGA4akQ/JFb2Cj0=
 
 
 # confluent
-create topic      :   nearin.oct_balance
+create topic      :   nearin.oct_transfer, nearin.oct_balance
 register schema   :   mvn schema-registry:register
 
 

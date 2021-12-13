@@ -38,7 +38,9 @@ import network.octopus.nearin.util.Schemas;
 import static network.octopus.nearin.util.Schemas.Topics.RECEIPTS;
 import static network.octopus.nearin.util.Schemas.Topics.EXECUTION_OUTCOMES;
 import static network.octopus.nearin.util.Schemas.Topics.ACTION_RECEIPT_ACTIONS;
-import static network.octopus.nearin.util.Schemas.Topics.RECEIPTS_OUTCOMES_ACTIONS;
+import static network.octopus.nearin.util.Schemas.Topics.DATA_RECEIPTS;
+import static network.octopus.nearin.util.Schemas.Topics.ACTION_RECEIPT_INPUT_DATA;
+import static network.octopus.nearin.util.Schemas.Topics.RECEIPTS_OUTCOMES_ACTIONS_INPUTS;
 
 public class ReceiptOutcomeAction {
 
@@ -71,10 +73,13 @@ public class ReceiptOutcomeAction {
     final String receiptTopic = props.getProperty("receipts.topic.name");
     final String executionOutcomesTopic = props.getProperty("execution_outcomes.topic.name");
     final String actionReceiptActionsTopic = props.getProperty("action_receipt_actions.topic.name");
-    final String receiptsOutcomesActionsTopic = props.getProperty("receipts_outcomes_actions.topic.name");
+    final String dataReceiptsTopic = props.getProperty("data_receipts.topic.name");
+    final String actionReceiptInputDataTopic = props.getProperty("action_receipt_input_data.topic.name");
+    final String receiptsOutcomesActionsInputsTopic = props.getProperty("receipts_outcomes_actions_inputs.topic.name");
 
     final Duration windowSize = Duration.ofMinutes(30);
     final Duration retentionPeriod = Duration.ofMinutes(30);
+    final Duration joinDuration = Duration.ofMinutes(60);
 
     final StreamsBuilder builder = new StreamsBuilder();
 
@@ -83,43 +88,76 @@ public class ReceiptOutcomeAction {
         Stores.persistentWindowStore(storeName, retentionPeriod, windowSize, false), Serdes.String(), Serdes.Long());
     builder.addStateStore(dedupStoreBuilder);
 
+    /********************************************************************************
+     * 1. receipts + outcomes + actions --> receipts_outcomes_actions
+     ********************************************************************************/
     final KStream<String, near.indexer.receipts.Value> receipts = builder
         .stream(receiptTopic,
             Consumed.with(RECEIPTS.keySerde(), RECEIPTS.valueSerde()))
                 // .withTimestampExtractor(RECEIPTS.timestampExtractor()))
         .transform(() -> new DeduplicationTransformer<>(windowSize.toMillis(),
-            (key, value) -> "receipts-"+value.getReceiptId()), storeName);
+            (key, value) -> "receipts-" + value.getReceiptId()), storeName);
     // receipts.peek((k, v) -> logger.debug("receipts: {} {}", k, v));
 
-    final KStream<String, near.indexer.execution_outcomes.Value> outcomes = builder
+    final KStream<String, near.indexer.execution_outcomes.Value> executionOutcomes = builder
         .stream(executionOutcomesTopic,
             Consumed.with(EXECUTION_OUTCOMES.keySerde(), EXECUTION_OUTCOMES.valueSerde()))
                 // .withTimestampExtractor(EXECUTION_OUTCOMES.timestampExtractor()))
         .transform(() -> new DeduplicationTransformer<>(windowSize.toMillis(),
-            (key, value) -> "execution_outcomes-"+value.getReceiptId()), storeName);
-    // outcomes.peek((k, v) -> logger.debug("outcomes: {} {}", k, v));
+            (key, value) -> "execution_outcomes-" + value.getReceiptId()), storeName);
+    // executionOutcomes.peek((k, v) -> logger.debug("executionOutcomes: {} {}", k, v));
 
-    final KStream<String, near.indexer.action_receipt_actions.Value> actions = builder
+    final KStream<String, near.indexer.action_receipt_actions.Value> actionReceiptActions = builder
         .stream(actionReceiptActionsTopic,
             Consumed.with(ACTION_RECEIPT_ACTIONS.keySerde(), ACTION_RECEIPT_ACTIONS.valueSerde()))
                 // .withTimestampExtractor(ACTION_RECEIPT_ACTIONS.timestampExtractor()))
         .transform(() -> new DeduplicationTransformer<>(windowSize.toMillis(),
-            (key, value) -> "action_receipt_actions-"+value.getReceiptId()+"_"+value.getIndexInActionReceipt()), storeName);
-    // actions.peek((k, v) -> logger.debug("actions: {} {}", k, v));
+            (key, value) -> "action_receipt_actions-" + value.getReceiptId() + "_" + value.getIndexInActionReceipt()), storeName);
+    // actionReceiptActions.peek((k, v) -> logger.debug("actionReceiptActions: {} {}", k, v));
 
     final KStream<String, near.indexer.receipts_outcomes_actions.Value> receiptOutcomeAction = receipts
-        .join(outcomes, (receipt, outcome) -> new near.indexer.receipts_outcomes_actions.Value(receipt, outcome, null),
-            JoinWindows.of(Duration.ofMinutes(60)))
-        .join(actions,
+        .join(executionOutcomes, (receipt, outcome) -> new near.indexer.receipts_outcomes_actions.Value(receipt, outcome, null),
+            JoinWindows.of(joinDuration))
+        .join(actionReceiptActions,
             (receiptOutcome, action) -> new near.indexer.receipts_outcomes_actions.Value(receiptOutcome.getReceipt(),
                 receiptOutcome.getOutcome(), action),
-            JoinWindows.of(Duration.ofMinutes(60)));
-      // .filter((key, value) -> !value.getOutcome().getStatus().equals("FAILURE") && value.getAction().getActionKind().equals("FUNCTION_CALL"))
-      // .peek((k, v) -> logger.debug("[2] filter {} --> {}", k, v));
+            JoinWindows.of(joinDuration));
+    // receiptOutcomeAction.peek((k, v) -> logger.debug("[1] join {} --> {}", k, v));
 
-    receiptOutcomeAction
-        .peek((k, v) -> logger.info("receipt-outcome-action {} --> {} {}", k, v.getOutcome().getStatus(), v.getAction().getActionKind()))
-        .to(receiptsOutcomesActionsTopic, Produced.with(RECEIPTS_OUTCOMES_ACTIONS.keySerde(), RECEIPTS_OUTCOMES_ACTIONS.valueSerde()));
+    /********************************************************************************
+     * 2. data + input --> inputs (rekey)
+     ********************************************************************************/
+    final KStream<String, near.indexer.data_receipts.Value> dataReceipts = builder
+        .stream(dataReceiptsTopic,
+            Consumed.with(DATA_RECEIPTS.keySerde(), DATA_RECEIPTS.valueSerde()))
+        .transform(() -> new DeduplicationTransformer<>(windowSize.toMillis(),
+            (key, value) -> "data_receipts-" + value.getDataId()), storeName);
+    // dataReceipts.peek((k, v) -> logger.debug("dataReceipts: {} {}", k, v));
+
+    final KStream<String, near.indexer.action_receipt_input_data.Value> actionReceiptInputData = builder
+        .stream(actionReceiptInputDataTopic,
+            Consumed.with(ACTION_RECEIPT_INPUT_DATA.keySerde(), ACTION_RECEIPT_INPUT_DATA.valueSerde()))
+        .transform(() -> new DeduplicationTransformer<>(windowSize.toMillis(),
+            (key, value) -> "action_receipt_input_data-" + value.getInputDataId() + "_" + value.getInputToReceiptId()), storeName);
+    // actionReceiptInputData.peek((k, v) -> logger.debug("actionReceiptInputData: {} {}", k, v));
+
+    final KStream<String, near.indexer.data_receipts.Value> inputData = dataReceipts
+        .join(actionReceiptInputData, (data, input) -> new ActionReceiptInputData(data, input),
+            JoinWindows.of(joinDuration))
+        .map((key, value) -> KeyValue.pair(value.actionReceiptInputData.getInputToReceiptId(), value.dataReceipts));
+    // dataReceipts.peek((k, v) -> logger.debug("[2] join {} --> {}", k, v));
+        
+    /********************************************************************************
+     * 3. receiptOutcomeAction + inputData --> receiptOutcomeActionInput
+     ********************************************************************************/
+    final KStream<String, near.indexer.receipts_outcomes_actions_inputs.Value> receiptOutcomeActionInput = receiptOutcomeAction
+        .leftJoin(inputData, (left, right) -> new near.indexer.receipts_outcomes_actions_inputs.Value(
+            left.getReceipt(), left.getOutcome(), left.getAction(), right), JoinWindows.of(joinDuration));
+ 
+    receiptOutcomeActionInput
+        .peek((k, v) -> logger.info("receipt-outcome-action-input {} --> {} {} {}", k, v.getOutcome().getStatus(), v.getAction().getActionKind(), v.getInput().getDataId()))
+        .to(receiptsOutcomesActionsInputsTopic,
+            Produced.with(RECEIPTS_OUTCOMES_ACTIONS_INPUTS.keySerde(), RECEIPTS_OUTCOMES_ACTIONS_INPUTS.valueSerde()));
 
     return new KafkaStreams(builder.build(), props);
   }
@@ -228,6 +266,16 @@ public class ReceiptOutcomeAction {
 
     @Override
     public void configure(final Map<String, ?> configs) {
+    }
+  }
+
+  public static class ActionReceiptInputData {
+    final public near.indexer.data_receipts.Value dataReceipts;
+    final public near.indexer.action_receipt_input_data.Value actionReceiptInputData;
+
+    public ActionReceiptInputData(final near.indexer.data_receipts.Value dataReceipts, final near.indexer.action_receipt_input_data.Value actionReceiptInputData) {
+      this.dataReceipts = dataReceipts;
+      this.actionReceiptInputData = actionReceiptInputData;
     }
   }
 

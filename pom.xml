@@ -167,13 +167,17 @@
                                 <import>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.receipts-value.avsc</import>
                                 <import>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.execution_outcomes-value.avsc</import>
                                 <import>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.action_receipt_actions-value.avsc</import>
+                                <import>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.data_receipts-value.avsc</import>
                                 <import>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.token_transfer-value.avsc</import>
                             </imports>
                             <includes>
                                 <include>near.indexer.receipts-value.avsc</include>
                                 <include>near.indexer.execution_outcomes-value.avsc</include>
                                 <include>near.indexer.action_receipt_actions-value.avsc</include>
+                                <include>near.indexer.data_receipts-value.avsc</include>
+                                <include>near.indexer.action_receipt_input_data-value.avsc</include>
                                 <include>near.indexer.receipts_outcomes_actions-value.avsc</include>
+                                <include>near.indexer.receipts_outcomes_actions_inputs-value.avsc</include>
                                 <include>near.indexer.token_transfer-value.avsc</include>
                                 <include>near.indexer.token_balance-value.avsc</include>
                                 <include>near.indexer.daily_activate_users-value.avsc</include>
@@ -213,7 +217,10 @@
                         <near.indexer.action_receipt_actions-value>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.action_receipt_actions-value.avsc</near.indexer.action_receipt_actions-value>
                         <near.indexer.execution_outcomes-value>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.execution_outcomes-value.avsc</near.indexer.execution_outcomes-value>
                         <near.indexer.receipts-value>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.receipts-value.avsc</near.indexer.receipts-value>
+                        <near.indexer.data_receipts-value>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.data_receipts-value.avsc</near.indexer.data_receipts-value>
+                        <near.indexer.action_receipt_input_data-value>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.action_receipt_input_data-value.avsc</near.indexer.action_receipt_input_data-value>
                         <near.indexer.receipts_outcomes_actions-value>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.receipts_outcomes_actions-value.avsc</near.indexer.receipts_outcomes_actions-value>
+                        <near.indexer.receipts_outcomes_actions_inputs-value>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.receipts_outcomes_actions_inputs-value.avsc</near.indexer.receipts_outcomes_actions_inputs-value>
                         <near.indexer.token_balance-value>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.token_balance-value.avsc</near.indexer.token_balance-value>
                         <near.indexer.token_transfer-value>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.token_transfer-value.avsc</near.indexer.token_transfer-value>
                         <near.indexer.daily_activate_users-value>${project.basedir}/src/main/resources/avro/network/octopus/nearin/near.indexer.daily_activate_users-value.avsc</near.indexer.daily_activate_users-value>
@@ -224,7 +231,10 @@
                         <near.indexer.action_receipt_actions-value>AVRO</near.indexer.action_receipt_actions-value>
                         <near.indexer.execution_outcomes-value>AVRO</near.indexer.execution_outcomes-value>
                         <near.indexer.receipts-value>AVRO</near.indexer.receipts-value>
+                        <near.indexer.data_receipts-value>AVRO</near.indexer.data_receipts-value>
+                        <near.indexer.action_receipt_input_data-value>AVRO</near.indexer.action_receipt_input_data-value>
                         <near.indexer.receipts_outcomes_actions-value>AVRO</near.indexer.receipts_outcomes_actions-value>
+                        <near.indexer.receipts_outcomes_actions_inputs-value>AVRO</near.indexer.receipts_outcomes_actions_inputs-value>
                         <near.indexer.token_balance-value>AVRO</near.indexer.token_balance-value>
                         <near.indexer.token_transfer-value>AVRO</near.indexer.token_transfer-value>
                         <near.indexer.daily_activate_users-value>AVRO</near.indexer.daily_activate_users-value>
@@ -246,6 +256,24 @@
                                 <subject>near.indexer.action_receipt_actions-value</subject>
                             </reference>
                         </near.indexer.receipts_outcomes_actions-value>
+                        <near.indexer.receipts_outcomes_actions_inputs-value>
+                            <reference>
+                                <name>near.indexer.receipts.Value</name>
+                                <subject>near.indexer.receipts-value</subject>
+                            </reference>
+                            <reference>
+                                <name>near.indexer.execution_outcomes.Value</name>
+                                <subject>near.indexer.execution_outcomes-value</subject>
+                            </reference>
+                            <reference>
+                                <name>near.indexer.action_receipt_actions.Value</name>
+                                <subject>near.indexer.action_receipt_actions-value</subject>
+                            </reference>
+                            <reference>
+                                <name>near.indexer.data_receipts.Value</name>
+                                <subject>near.indexer.data_receipts-value</subject>
+                            </reference>
+                        </near.indexer.receipts_outcomes_actions_inputs-value>
                         <near.indexer.daily_transfer_topk-value>
                             <reference>
                                 <name>near.indexer.token_transfer.Value</name>

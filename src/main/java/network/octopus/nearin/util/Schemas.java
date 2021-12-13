@@ -77,8 +77,11 @@ public class Schemas {
     public static Topic<String, near.indexer.receipts.Value> RECEIPTS;
     public static Topic<String, near.indexer.execution_outcomes.Value> EXECUTION_OUTCOMES;
     public static Topic<String, near.indexer.action_receipt_actions.Value> ACTION_RECEIPT_ACTIONS;
+    public static Topic<String, near.indexer.data_receipts.Value> DATA_RECEIPTS;
+    public static Topic<String, near.indexer.action_receipt_input_data.Value> ACTION_RECEIPT_INPUT_DATA;
     // output topic
     public static Topic<String, near.indexer.receipts_outcomes_actions.Value> RECEIPTS_OUTCOMES_ACTIONS;
+    public static Topic<String, near.indexer.receipts_outcomes_actions_inputs.Value> RECEIPTS_OUTCOMES_ACTIONS_INPUTS;
     public static Topic<String, near.indexer.token_transfer.Value> TOKEN_TRANSFER;
     public static Topic<String, near.indexer.token_balance.Value> TOKEN_BALANCE;
     public static Topic<String, near.indexer.daily_activate_users.Value> TOKEN_DAILY_ACTIVATE_USERS;
@@ -90,6 +93,7 @@ public class Schemas {
     }
 
     private static void createTopics() {
+      // input
       RECEIPTS = new Topic<>("near.indexer.receipts",
           Serdes.String(), new SpecificAvroSerde<>(), (v) -> {
             return v.getIncludedInBlockTimestamp();
@@ -102,8 +106,19 @@ public class Schemas {
           Serdes.String(), new SpecificAvroSerde<>(), (v) -> {
             return v.getReceiptIncludedInBlockTimestamp();
           });
+      DATA_RECEIPTS = new Topic<>("near.indexer.data_receipts", 
+          Serdes.String(), new SpecificAvroSerde<>(), null);
 
+      ACTION_RECEIPT_INPUT_DATA = new Topic<>("near.indexer.action_receipt_input_data", 
+          Serdes.String(), new SpecificAvroSerde<>(), null);
+      
+      // output
       RECEIPTS_OUTCOMES_ACTIONS = new Topic<>("near.indexer.receipts_outcomes_actions", 
+          Serdes.String(), new SpecificAvroSerde<>(), (v) -> {
+            return v.getReceipt().getIncludedInBlockTimestamp();
+          });
+
+      RECEIPTS_OUTCOMES_ACTIONS_INPUTS = new Topic<>("near.indexer.receipts_outcomes_actions_inputs", 
           Serdes.String(), new SpecificAvroSerde<>(), (v) -> {
             return v.getReceipt().getIncludedInBlockTimestamp();
           });

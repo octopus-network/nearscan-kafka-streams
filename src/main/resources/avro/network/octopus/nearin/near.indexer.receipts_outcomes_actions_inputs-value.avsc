@@ -1,0 +1,35 @@
+{
+  "type": "record",
+  "name": "Value",
+  "namespace": "near.indexer.receipts_outcomes_actions_inputs",
+  "fields": [
+    {
+      "name": "receipt",
+      "type": [
+        "null",
+        "near.indexer.receipts.Value"
+      ]
+    },
+    {
+      "name": "outcome",
+      "type": [
+        "null",
+        "near.indexer.execution_outcomes.Value"
+      ]
+    },
+    {
+      "name": "action",
+      "type": [
+        "null",
+        "near.indexer.action_receipt_actions.Value"
+      ]
+    },
+    {
+      "name": "input",
+      "type": [
+        "null",
+        "near.indexer.data_receipts.Value"
+      ]
+    }
+  ]
+}

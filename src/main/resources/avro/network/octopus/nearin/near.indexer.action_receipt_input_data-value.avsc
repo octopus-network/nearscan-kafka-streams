@@ -1,0 +1,24 @@
+{
+  "connect.name": "near.indexer.action_receipt_input_data.Value",
+  "fields": [
+    {
+      "name": "input_data_id",
+      "type": "string"
+    },
+    {
+      "name": "input_to_receipt_id",
+      "type": "string"
+    },
+    {
+      "default": null,
+      "name": "__deleted",
+      "type": [
+        "null",
+        "string"
+      ]
+    }
+  ],
+  "name": "Value",
+  "namespace": "near.indexer.action_receipt_input_data",
+  "type": "record"
+}
